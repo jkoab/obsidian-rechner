@@ -11,16 +11,16 @@ import {
 
 // Remember to rename these classes and interfaces!
 
-interface MyPluginSettings {
-	mySetting: string;
+interface NumbatCodeblockSettings {
+	locale: string;
 }
 
-const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: "default",
+const DEFAULT_SETTINGS: NumbatCodeblockSettings = {
+	locale: "default",
 };
 
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+export class MyPlugin extends Plugin {
+	settings: NumbatCodeblockSettings;
 
 	async onload() {
 		// print debug loading message
@@ -98,6 +98,54 @@ export default class MyPlugin extends Plugin {
 	}
 
 	onunload() {}
+}
+
+class NumbatPluginSettingsTab extends PluginSettingTab {
+	plugin: NumbatPlugin;
+
+	constructor(app: App, plugin: NumbatPlugin) {
+		super(app, plugin);
+		this.plugin = plugin;
+	}
+
+	display(): void {
+		const { containerEl } = this;
+
+		containerEl.empty();
+
+		new Setting(containerEl)
+			.setName("Settings")
+			.setDesc("General settings")
+			.addText((text) =>
+				text
+					.setPlaceholder("Locale")
+					.setValue(this.plugin.settings.locale)
+					.onChange(async (value) => {
+						this.plugin.settings.locale = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+	}
+}
+
+export default class NumbatPlugin extends Plugin {
+	settings: NumbatCodeblockSettings;
+	async onload(): Promise<void> {
+		console.log("loading plugin");
+		await this.loadSettings();
+		this.addSettingTab(new NumbatPluginSettingsTab(this.app, this));
+
+		this.registerMarkdownCodeBlockProcessor("numbat", (source, el, ctx) => {
+			const statementsTable = el.createEl("table");
+			const lines = source.split("\n");
+			for (const [idx, line] of lines.entries()) {
+				const row = statementsTable.createEl("tr");
+				row.createEl("td", { text: idx.toString() });
+				row.createEl("td", { text: line });
+				row.createEl("td", { text: "TODO: eval" });
+			}
+		});
+	}
 
 	async loadSettings() {
 		this.settings = Object.assign(
@@ -109,49 +157,6 @@ export default class MyPlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
-	}
-}
-
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
-	}
-
-	onOpen() {
-		const { contentEl } = this;
-		contentEl.setText("Woah!");
-	}
-
-	onClose() {
-		const { contentEl } = this;
-		contentEl.empty();
-	}
-}
-
-class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
-
-	constructor(app: App, plugin: MyPlugin) {
-		super(app, plugin);
-		this.plugin = plugin;
-	}
-
-	display(): void {
-		const { containerEl } = this;
-
-		containerEl.empty();
-
-		new Setting(containerEl)
-			.setName("Setting #1")
-			.setDesc("It's a secret")
-			.addText((text) =>
-				text
-					.setPlaceholder("Enter your secret")
-					.setValue(this.plugin.settings.mySetting)
-					.onChange(async (value) => {
-						this.plugin.settings.mySetting = value;
-						await this.plugin.saveSettings();
-					}),
-			);
+		console.log(`settings saved: ${JSON.stringify(this.settings)}`);
 	}
 }
