@@ -9,8 +9,6 @@ import {
 	Setting,
 } from "obsidian";
 
-// Remember to rename these classes and interfaces!
-
 interface NumbatCodeblockSettings {
 	locale: string;
 }
@@ -128,6 +126,25 @@ class NumbatPluginSettingsTab extends PluginSettingTab {
 	}
 }
 
+interface Evals {
+	line: string;
+	evaluation?: string;
+}
+
+import styles from "./nbcodeblock.module.css";
+
+function renderEvals(element: Element, evals: Array<Evals>): void {
+	for (const [idx, { line, evaluation }] of evals.entries()) {
+		const row = element.createEl("div", { cls: styles.evalLine });
+		// row.createEl("div", { cls: "", text: idx.toString() });
+		row.createEl("div", { cls: styles.codeLine, text: line });
+		row.createEl("div", {
+			text: evaluation,
+			cls: styles.CodeEval,
+		});
+	}
+}
+
 export default class NumbatPlugin extends Plugin {
 	settings: NumbatCodeblockSettings;
 	async onload(): Promise<void> {
@@ -136,14 +153,20 @@ export default class NumbatPlugin extends Plugin {
 		this.addSettingTab(new NumbatPluginSettingsTab(this.app, this));
 
 		this.registerMarkdownCodeBlockProcessor("numbat", (source, el, ctx) => {
-			const statementsTable = el.createEl("table");
+			const statementsTable = el.createEl("div", {
+				cls: styles.codeBlocks,
+			});
 			const lines = source.split("\n");
-			for (const [idx, line] of lines.entries()) {
-				const row = statementsTable.createEl("tr");
-				row.createEl("td", { text: idx.toString() });
-				row.createEl("td", { text: line });
-				row.createEl("td", { text: "TODO: eval" });
-			}
+			// TODO: evaluate
+			const evals: Array<Evals> = lines.map((line) => {
+				let evaluation: string | undefined = undefined;
+				if (line.trim() !== "") {
+					evaluation = "TODO: evala";
+				}
+				console.log({ line, evaluation });
+				return { line, evaluation };
+			});
+			renderEvals(statementsTable, evals);
 		});
 	}
 
