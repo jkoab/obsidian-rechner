@@ -1,0 +1,44 @@
+/* TOOD: limit to codeblock */
+:root {
+	--spacing: 0.25rem;
+	--color-amber-100: oklch(96.2% 0.059 95.617);
+	--color-green-100: oklch(96.2% 0.044 156.743);
+	--color-fuchsia-700: oklch(51.8% 0.253 323.949);
+}
+
+:global(.p-2) {
+	padding: calc(var(--spacing) * 2);
+}
+
+.codeBlock {
+	display: flex;
+	flex-direction: column;
+	border-radius: 5px;
+	border: 1 solid lightgray;
+	padding: 3px;
+}
+
+.evalLine {
+	flex: 1;
+	display: flex;
+	line-height: var(--font-text-size);
+	min-height: var(--font-text-size);
+}
+
+.codeLine {
+	flex: 2;
+}
+
+.codeEval {
+	flex: 1;
+	padding: var(--size-4-3) var(--size-4-4);
+	background-color: var(--color-green-100);
+}
+
+:global(.numbat-diagnostic-red) {
+	color: var(--color-amber-100);
+}
+
+:global(.numbat-type-identifier) {
+	color: var(--color-fuchsia-700);
+}

@@ -7,6 +7,7 @@ import {
 	Plugin,
 	PluginSettingTab,
 	Setting,
+	MarkdownPostProcessorContext,
 } from "obsidian";
 
 interface NumbatCodeblockSettings {
@@ -128,46 +129,82 @@ class NumbatPluginSettingsTab extends PluginSettingTab {
 
 interface Evals {
 	line: string;
-	evaluation?: string;
+	evaluation?: InterpreterOutput;
 }
 
 import styles from "./nbcodeblock.module.css";
+
+function renderError(error: InterpreterOutput): Element {
+	const pre = document.createElement("pre");
+	pre.innerHTML = error.output as string;
+	return pre;
+}
 
 function renderEvals(element: Element, evals: Array<Evals>): void {
 	for (const [idx, { line, evaluation }] of evals.entries()) {
 		const row = element.createEl("div", { cls: styles.evalLine });
 		// row.createEl("div", { cls: "", text: idx.toString() });
-		row.createEl("div", { cls: styles.codeLine, text: line });
-		row.createEl("div", {
-			text: evaluation,
-			cls: styles.CodeEval,
-		});
+		row.createEl("pre", { cls: styles.codeLine, text: line });
+
+		console.dir(evaluation);
+		if (evaluation?.is_error) {
+			const errEl = renderError(evaluation);
+			row.appendChild(errEl);
+		} else {
+			const evalEl = row.createEl("div", {
+				cls: styles.codeEval,
+			});
+			if (evaluation) {
+				evalEl.innerHTML = evaluation.output as string;
+			}
+		}
 	}
 }
+import fs from "fs";
+import * as numbatwasm from "./pkg/numbat_wasm";
+import * as wasmbin from "./pkg/numbat_wasm_bg.wasm";
+import { InterpreterOutput } from "./pkg/numbat_wasm";
 
 export default class NumbatPlugin extends Plugin {
 	settings: NumbatCodeblockSettings;
 	async onload(): Promise<void> {
 		console.log("loading plugin");
 		await this.loadSettings();
+		const wasm = await numbatwasm.default(wasmbin.default);
+		numbatwasm.setup_panic_hook();
+
+		console.dir(numbatwasm);
+
 		this.addSettingTab(new NumbatPluginSettingsTab(this.app, this));
 
-		this.registerMarkdownCodeBlockProcessor("numbat", (source, el, ctx) => {
+		const handler = (
+			source: string,
+			el: HTMLElement,
+			ctx: MarkdownPostProcessorContext,
+		) => {
+			const numbat = numbatwasm.Numbat.new(
+				true,
+				false,
+				numbatwasm.FormatType.Html,
+			);
+
 			const statementsTable = el.createEl("div", {
-				cls: styles.codeBlocks,
+				cls: [styles.codeBlocks],
 			});
-			const lines = source.split("\n");
+			const lines = source.split("\n\n");
 			// TODO: evaluate
 			const evals: Array<Evals> = lines.map((line) => {
-				let evaluation: string | undefined = undefined;
+				let interpretOutput: InterpreterOutput | undefined = undefined;
 				if (line.trim() !== "") {
-					evaluation = "TODO: evala";
+					interpretOutput = numbat.interpret(line);
 				}
-				console.log({ line, evaluation });
-				return { line, evaluation };
+				return { line, evaluation: interpretOutput };
 			});
 			renderEvals(statementsTable, evals);
-		});
+		};
+		["numbat", "nbt"].map((codeblockname) =>
+			this.registerMarkdownCodeBlockProcessor(codeblockname, handler),
+		);
 	}
 
 	async loadSettings() {
