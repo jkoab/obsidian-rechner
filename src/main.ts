@@ -8,6 +8,7 @@ import {
 	PluginSettingTab,
 	Setting,
 	MarkdownPostProcessorContext,
+	requestUrl,
 } from "obsidian";
 
 interface NumbatCodeblockSettings {
@@ -136,6 +137,7 @@ import styles from "./nbcodeblock.module.css";
 
 function renderError(error: InterpreterOutput): Element {
 	const pre = document.createElement("pre");
+	pre.classList.add([styles.codeEval]);
 	pre.innerHTML = error.output as string;
 	return pre;
 }
@@ -146,7 +148,6 @@ function renderEvals(element: Element, evals: Array<Evals>): void {
 		// row.createEl("div", { cls: "", text: idx.toString() });
 		row.createEl("pre", { cls: styles.codeLine, text: line });
 
-		console.dir(evaluation);
 		if (evaluation?.is_error) {
 			const errEl = renderError(evaluation);
 			row.appendChild(errEl);
@@ -160,18 +161,40 @@ function renderEvals(element: Element, evals: Array<Evals>): void {
 		}
 	}
 }
-import fs from "fs";
-import * as numbatwasm from "./pkg/numbat_wasm";
-import * as wasmbin from "./pkg/numbat_wasm_bg.wasm";
-import { InterpreterOutput } from "./pkg/numbat_wasm";
+
+import * as numbatwasm from "../pkg/numbat_wasm";
+import * as wasmbin from "../pkg/numbat_wasm_bg.wasm";
+import { InterpreterOutput } from "../pkg/numbat_wasm";
+
+async function getExchangeRates() {
+	const response = await requestUrl(
+		"https://numbat.dev/ecb-exchange-rates.php",
+	).text;
+	return response;
+}
+
+function instrument(spanName: string, fun: () => void) {
+	const start = performance.now();
+	fun();
+	const end = performance.now();
+	const timing = end - start;
+	const logmessage = `${spanName}: ${timing} ms`;
+	if (timing > 30) {
+		console.warn(logmessage);
+	} else {
+		console.log(logmessage);
+	}
+}
 
 export default class NumbatPlugin extends Plugin {
 	settings: NumbatCodeblockSettings;
 	async onload(): Promise<void> {
 		console.log("loading plugin");
+		// TODO: await in paralell
 		await this.loadSettings();
 		const wasm = await numbatwasm.default(wasmbin.default);
 		numbatwasm.setup_panic_hook();
+		// const exchangeRates = await getExchangeRates();
 
 		console.dir(numbatwasm);
 
@@ -182,25 +205,35 @@ export default class NumbatPlugin extends Plugin {
 			el: HTMLElement,
 			ctx: MarkdownPostProcessorContext,
 		) => {
-			const numbat = numbatwasm.Numbat.new(
-				true,
-				false,
-				numbatwasm.FormatType.Html,
-			);
-
-			const statementsTable = el.createEl("div", {
-				cls: [styles.codeBlocks],
-			});
-			const lines = source.split("\n\n");
-			// TODO: evaluate
-			const evals: Array<Evals> = lines.map((line) => {
-				let interpretOutput: InterpreterOutput | undefined = undefined;
-				if (line.trim() !== "") {
-					interpretOutput = numbat.interpret(line);
-				}
-				return { line, evaluation: interpretOutput };
-			});
-			renderEvals(statementsTable, evals);
+			try {
+				const numbat = numbatwasm.Numbat.new(
+					true,
+					false,
+					numbatwasm.FormatType.Html,
+				);
+				// numbat.set_exchange_rates(exchangeRates);
+				const statementsTable = el.createEl("div", {
+					cls: [styles.codeBlocks],
+				});
+				const lines = source.split("\n\n");
+				instrument(
+					`evaluate-block-${ctx.sourcePath || "none"}-${ctx.docId}`,
+					() => {
+						const evals: Array<Evals> = lines.map((line) => {
+							let interpretOutput: InterpreterOutput | undefined =
+								undefined;
+							if (line.trim() !== "") {
+								interpretOutput = numbat.interpret(line);
+							}
+							return { line, evaluation: interpretOutput };
+						});
+						renderEvals(statementsTable, evals);
+					},
+				);
+			} catch (error) {
+				console.error(error);
+				el.createEl("div", { text: error });
+			}
 		};
 		["numbat", "nbt"].map((codeblockname) =>
 			this.registerMarkdownCodeBlockProcessor(codeblockname, handler),

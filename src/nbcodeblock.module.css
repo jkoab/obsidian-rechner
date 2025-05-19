@@ -4,7 +4,7 @@
 	--color-amber-100: oklch(96.2% 0.059 95.617);
 	--color-green-100: oklch(96.2% 0.044 156.743);
 	--color-fuchsia-700: oklch(51.8% 0.253 323.949);
-	--dimmed: 15%;
+	--dimmed: 20%;
 }
 
 :global(.p-2) {
