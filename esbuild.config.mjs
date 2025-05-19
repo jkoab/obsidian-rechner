@@ -122,6 +122,24 @@ const context = await esbuild.context({
 				"pkg/numbat_wasm_bg.wasm",
 			],
 		}),
+		{
+			name: "place-hotreload",
+			setup(build) {
+				build.onEnd(() => {
+					if (!prod) {
+						const outdir = path.dirname(
+							build.initialOptions.outfile,
+						);
+						const hotReloadFilePath = path.join(
+							outdir,
+							".hotreload",
+						);
+						fs.writeFileSync(hotReloadFilePath, "");
+						console.log(`Created empty file: ${hotReloadFilePath}`);
+					}
+				});
+			},
+		},
 	],
 });
 
