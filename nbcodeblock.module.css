@@ -4,6 +4,7 @@
 	--color-amber-100: oklch(96.2% 0.059 95.617);
 	--color-green-100: oklch(96.2% 0.044 156.743);
 	--color-fuchsia-700: oklch(51.8% 0.253 323.949);
+	--dimmed: 15%;
 }
 
 :global(.p-2) {
@@ -21,8 +22,10 @@
 .evalLine {
 	flex: 1;
 	display: flex;
+
 	line-height: var(--font-text-size);
 	min-height: var(--font-text-size);
+	border-bottom: 1px solid oklch(92% 0.004 286.32);
 }
 
 .codeLine {
@@ -31,14 +34,35 @@
 
 .codeEval {
 	flex: 1;
-	padding: var(--size-4-3) var(--size-4-4);
-	background-color: var(--color-green-100);
+	flex-wrap: wrap;
+	background-color: oklch(98.2% 0.018 155.826);
+}
+.codeEval span:last-child::after {
+	content: "";
+	display: block;
 }
 
+:global(.numbat-dimmed) {
+	opacity: var(--dimmed);
+}
+
+:global(.numbat-diagnostic-blue) {
+	color: rgb(32, 94, 166);
+}
+
+:global(.numbat-diagnostic-bold) {
+	font-weight: bold;
+}
 :global(.numbat-diagnostic-red) {
-	color: var(--color-amber-100);
+	color: rgb(175, 48, 41);
+}
+
+:global(.numbat-unit),
+:global(.numbat-operator) {
+	padding-left: calc(var(--spacing) * 1);
+	padding-right: calc(var(--spacing) * 1);
 }
 
 :global(.numbat-type-identifier) {
-	color: var(--color-fuchsia-700);
+	color: rgb(160, 47, 111);
 }
