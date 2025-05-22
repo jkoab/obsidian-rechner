@@ -41,28 +41,3 @@
 	content: "";
 	display: block;
 }
-
-:global(.numbat-dimmed) {
-	opacity: var(--dimmed);
-}
-
-:global(.numbat-diagnostic-blue) {
-	color: rgb(32, 94, 166);
-}
-
-:global(.numbat-diagnostic-bold) {
-	font-weight: bold;
-}
-:global(.numbat-diagnostic-red) {
-	color: rgb(175, 48, 41);
-}
-
-:global(.numbat-unit),
-:global(.numbat-operator) {
-	padding-left: calc(var(--spacing) * 1);
-	padding-right: calc(var(--spacing) * 1);
-}
-
-:global(.numbat-type-identifier) {
-	color: rgb(160, 47, 111);
-}
