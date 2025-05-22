@@ -20,6 +20,20 @@ function hotReloadFilePlugin({ filePath }: { filePath: string }): Plugin {
 	};
 }
 
+function includeJSON(options: { files: Array<string>; finalOutDir: string }) {
+	return {
+		name: "obsidian-plugin-files",
+		writeBundle() {
+			options.files.map((file) => {
+				fs.copyFileSync(
+					file,
+					path.join(finalOutDir, path.basename(file)),
+				);
+			});
+		},
+	};
+}
+
 export default defineConfig(async ({ mode }) => {
 	const { resolve } = path;
 	const prod = mode === "production";
@@ -29,6 +43,10 @@ export default defineConfig(async ({ mode }) => {
 			wasmPack(["./numbat/numbat-wasm/"]),
 			hotReloadFilePlugin({
 				filePath: path.join(finalOutDir, ".hotreload"),
+			}),
+			includeJSON({
+				finalOutDir,
+				files: ["versions.json", "manifest.json"],
 			}),
 		],
 		resolve: {
