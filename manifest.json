@@ -1,10 +1,10 @@
 {
-	"id": "obsidian-numbat",
-	"name": "Numbat",
+	"id": "obsidian-rechner",
+	"name": "Rechner",
 	"version": "0.1.0",
 	"minAppVersion": "0.15.0",
-	"description": "Prototype Obsidian Numbat integration",
+	"description": "Obsidian frontend for wasm based calculator engines",
 	"author": "jkoab",
-	"authorUrl": "https://github.com/jkoab/obsidian-numbat",
+	"authorUrl": "https://github.com/jkoab/obsidian-rechner",
 	"isDesktopOnly": false
 }

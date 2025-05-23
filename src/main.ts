@@ -10,20 +10,21 @@ import {
 	requestUrl,
 } from "obsidian";
 
-interface NumbatCodeblockSettings {
+import "./index.css";
+import "./numbat.css";
+
+interface RechnerPluginSettings {
 	locale: string;
 }
 
-const DEFAULT_SETTINGS: NumbatCodeblockSettings = {
+const DEFAULT_SETTINGS: RechnerPluginSettings = {
 	locale: "default",
 };
 
-import "./index.css";
+class RechnerPluginSettingsTab extends PluginSettingTab {
+	plugin: RechnerPlugin;
 
-class NumbatPluginSettingsTab extends PluginSettingTab {
-	plugin: NumbatPlugin;
-
-	constructor(app: App, plugin: NumbatPlugin) {
+	constructor(app: App, plugin: RechnerPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
@@ -116,9 +117,6 @@ import init, {
 	FormatType,
 } from "@numbat-wasm/numbat_wasm.js";
 import { evalLine } from "types/nbcodeblock.module.d.css";
-// import * as numbatwasm from "../numbat/pkg/numbat_wasm";
-// import numbatinit from "../numbat/pkg/numbat_wasm_bg.wasm?init";
-// import { InterpreterOutput } from "../numbat/pkg/numbat_wasm";
 
 async function getExchangeRates() {
 	const response = await requestUrl(
@@ -140,8 +138,8 @@ function instrument(spanName: string, fun: () => void) {
 	}
 }
 
-export default class NumbatPlugin extends Plugin {
-	settings: NumbatCodeblockSettings;
+export default class RechnerPlugin extends Plugin {
+	settings: RechnerPluginSettings;
 	async onload(): Promise<void> {
 		console.log("loading plugin");
 		// TODO: await in paralell
@@ -152,7 +150,7 @@ export default class NumbatPlugin extends Plugin {
 
 		// console.dir(numbatwasm);
 
-		this.addSettingTab(new NumbatPluginSettingsTab(this.app, this));
+		this.addSettingTab(new RechnerPluginSettingsTab(this.app, this));
 
 		const handler = (
 			source: string,
