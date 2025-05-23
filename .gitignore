@@ -1,5 +1,6 @@
 # TODO: clean up test vault
 test-vault-numbat/
+dist/
 
 styles.css
 
