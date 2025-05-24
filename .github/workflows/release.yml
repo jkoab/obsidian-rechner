@@ -33,5 +33,4 @@ jobs:
                   gh release create "$tag" \
                     --title="$tag" \
                     --draft \
-                    dist/* \
-                    --exclude="**/.gitkeep"
+                    dist/*
