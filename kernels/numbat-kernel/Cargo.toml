@@ -3,6 +3,8 @@ name = "numbat-kernel"
 version = "0.1.0"
 edition = "2021"
 
+[dev-dependencies]
+wasm-bindgen-test = "0.3.40"
 [dependencies]
 codespan-reporting = "0.11.1"
 numbat ={ version = "1.16.0", features = ["html-formatter"], default-features = false}
