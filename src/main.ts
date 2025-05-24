@@ -11,15 +11,9 @@ import {
 } from "obsidian";
 
 import "./index.css";
-import "./numbat.css";
-
-interface RechnerPluginSettings {
-	locale: string;
-}
-
-const DEFAULT_SETTINGS: RechnerPluginSettings = {
-	locale: "default",
-};
+import { Evals, InterpreterOutput } from "./kernel";
+import { NumbatKernel } from "./numbat";
+import { DEFAULT_SETTINGS, RechnerPluginSettings } from "./settings";
 
 class RechnerPluginSettingsTab extends PluginSettingTab {
 	plugin: RechnerPlugin;
@@ -49,17 +43,12 @@ class RechnerPluginSettingsTab extends PluginSettingTab {
 	}
 }
 
-interface Evals {
-	codeBlock: string;
-	evaluation?: InterpreterOutput;
-}
-
-function renderError(error: InterpreterOutput): Element {
+function renderError(error: string): Element {
 	const pre = document.createElement("pre");
 	pre.classList.add(
 		...["numbat-code", "numbat-code-error", "bg-red-200", "p-2"],
 	);
-	pre.innerHTML = error.output as string;
+	pre.innerHTML = error;
 	return pre;
 }
 
@@ -84,8 +73,8 @@ function renderEvals(element: Element, evals: Array<Evals>): void {
 			cls: [""],
 		});
 
-		if (evaluation?.is_error) {
-			const errEl = renderError(evaluation);
+		if (evaluation?.isError) {
+			const errEl = renderError(evaluation.output);
 			evaluatedBlock.appendChild(errEl);
 		} else {
 			const evalEl = evaluatedBlock.createEl("pre", {
@@ -110,20 +99,6 @@ function renderEvals(element: Element, evals: Array<Evals>): void {
 		}
 	}
 }
-import init, {
-	Numbat,
-	InterpreterOutput,
-	setup_panic_hook,
-	FormatType,
-} from "@numbat-wasm/numbat_wasm.js";
-import { evalLine } from "types/nbcodeblock.module.d.css";
-
-async function getExchangeRates() {
-	const response = await requestUrl(
-		"https://numbat.dev/ecb-exchange-rates.php",
-	).text;
-	return response;
-}
 
 function instrument(spanName: string, fun: () => void) {
 	const start = performance.now();
@@ -143,12 +118,15 @@ export default class RechnerPlugin extends Plugin {
 	async onload(): Promise<void> {
 		console.log("loading plugin");
 		// TODO: await in paralell
-		await this.loadSettings();
-		await init();
-		setup_panic_hook();
-		// const exchangeRates = await getExchangeRates();
+		const settings = await this.loadSettings();
 
-		// console.dir(numbatwasm);
+		let numbatKernel: NumbatKernel | null;
+		try {
+			numbatKernel = new NumbatKernel(settings);
+			numbatKernel.init();
+		} catch {
+			console.error("failed to load numbat kernel");
+		}
 
 		this.addSettingTab(new RechnerPluginSettingsTab(this.app, this));
 
@@ -158,7 +136,7 @@ export default class RechnerPlugin extends Plugin {
 			ctx: MarkdownPostProcessorContext,
 		) => {
 			try {
-				const numbat = Numbat.new(true, false, FormatType.Html);
+				const numbat = numbatKernel?.new();
 				// numbat.set_exchange_rates(exchangeRates);
 				const statementsTable = el.createEl("div", {
 					cls: ["border", "border-gray-100", "rounded-sm"],
@@ -174,7 +152,7 @@ export default class RechnerPlugin extends Plugin {
 									| undefined = undefined;
 								if (evalBlock.trim() !== "") {
 									interpretOutput =
-										numbat.interpret(evalBlock);
+										numbat?.interpret(evalBlock);
 								}
 								return {
 									codeBlock: evalBlock,
@@ -201,6 +179,7 @@ export default class RechnerPlugin extends Plugin {
 			DEFAULT_SETTINGS,
 			await this.loadData(),
 		);
+		return this.settings;
 	}
 
 	async saveSettings() {

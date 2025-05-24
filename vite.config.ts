@@ -5,30 +5,41 @@ import { defineConfig, Plugin, UserConfig } from "vite";
 import wasmPack from "vite-plugin-wasm-pack";
 
 const prod = process.env.NODE_ENV === "production";
+/**
+ * Location of the test vault plugin directory
+ */
 const devOutDir = "./test-vault-numbat/.obsidian/plugins/numbat-obsidian";
 const finalOutDir = prod ? "dist" : devOutDir;
 
-console.dir({ prod, node: process.env.NODE_ENV });
-function hotReloadFilePlugin({ filePath }: { filePath: string }): Plugin {
+function hotReloadFilePlugin(): Plugin {
 	return {
 		name: "hotreload-file",
-		writeBundle() {
+		generateBundle() {
 			if (prod) return;
-			fs.writeFileSync(filePath, "");
-			console.log(`Created .hotreload file at ${filePath}`);
+			this.emitFile({
+				type: "asset",
+				fileName: ".hotreload",
+				source: "",
+			});
 		},
 	};
 }
 
-function includeJSON(options: { files: Array<string>; finalOutDir: string }) {
+function includeJSON(options: { files: Array<string> }): Plugin {
 	return {
 		name: "obsidian-plugin-files",
-		writeBundle() {
+		buildStart() {
+			options.files.forEach((file) => {
+				this.addWatchFile(file);
+			});
+		},
+		generateBundle() {
 			options.files.map((file) => {
-				fs.copyFileSync(
-					file,
-					path.join(finalOutDir, path.basename(file)),
-				);
+				this.emitFile({
+					type: "asset",
+					fileName: path.basename(file),
+					source: fs.readFileSync(file),
+				});
 			});
 		},
 	};
@@ -40,20 +51,17 @@ export default defineConfig(async ({ mode }) => {
 
 	return {
 		plugins: [
-			wasmPack(["./numbat/numbat-wasm/"]),
-			hotReloadFilePlugin({
-				filePath: path.join(finalOutDir, ".hotreload"),
-			}),
+			wasmPack(["./kernels/numbat-kernel/"]),
+			hotReloadFilePlugin(),
 			includeJSON({
-				finalOutDir,
 				files: ["versions.json", "manifest.json"],
 			}),
 		],
 		resolve: {
 			alias: {
-				"@numbat-wasm": path.resolve(
+				"@numbat-kernel": path.resolve(
 					__dirname,
-					"./numbat/numbat-wasm/pkg/",
+					"./kernels/numbat-kernel/pkg/",
 				),
 			},
 		},

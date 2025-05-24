@@ -1,3 +1,5 @@
+@reference "./index.css";
+
 .numbat-dimmed {
 	@apply opacity-10 px-0.5;
 }

@@ -14,7 +14,7 @@
 		"strictNullChecks": true,
 		"lib": ["DOM", "ES5", "ES6", "ES7"],
 		"paths": {
-			"@numbat-wasm/*": ["./numbat/numbat-wasm/pkg/*"]
+			"@numbat-kernel/*": ["./kernels/numbat-kernel/pkg/*"]
 		}
 	},
 	"include": ["**/*.ts"]
