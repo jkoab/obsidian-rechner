@@ -21,6 +21,7 @@ jobs:
             - name: Build plugin
               run: |
                   npm install
+                  npm run wasm
                   npm run build
 
             - name: Create release
@@ -32,4 +33,5 @@ jobs:
                   gh release create "$tag" \
                     --title="$tag" \
                     --draft \
-                    main.js manifest.json styles.css
+                    dist/* \
+                    --exclude="**/.gitkeep"

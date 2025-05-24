@@ -4,6 +4,7 @@
 	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
 	"main": "main.js",
 	"scripts": {
+		"wasm": "wasm-pack build --target=web ./kernels/numbat-kernel",
 		"dev": "NODE_ENV=development vite build --mode development --watch",
 		"build": "tsc -noEmit -skipLibCheck && vite build --mode production",
 		"version": "node version-bump.mjs && git add manifest.json versions.json"
@@ -23,6 +24,7 @@
 		"@tailwindcss/postcss": "^4.1.7",
 		"tailwindcss": "^4.1.7",
 		"vite": "^6.3.5",
-		"vite-plugin-wasm-pack": "^0.1.12"
+		"vite-plugin-wasm-pack": "^0.1.12",
+		"wasm-pack": "^0.13.1"
 	}
 }
