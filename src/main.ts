@@ -11,7 +11,7 @@ import {
 } from "obsidian";
 
 import "./index.css";
-import { Evals, InterpreterOutput } from "./kernel";
+import { Evals, InterpreterOutput, REPLContext } from "./kernel";
 import { NumbatKernel } from "./numbat";
 import { DEFAULT_SETTINGS, RechnerPluginSettings } from "./settings";
 
@@ -114,63 +114,53 @@ function instrument(spanName: string, fun: () => void) {
 }
 
 export default class RechnerPlugin extends Plugin {
+	private blankREPL: REPLContext;
+
+	async blockHandler(
+		source: string,
+		el: HTMLElement,
+		ctx: MarkdownPostProcessorContext,
+	) {
+		try {
+			const blockREPL = this.blankREPL.clone();
+			const evalBlocks = source.split("\n\n");
+			// numbat.set_exchange_rates(exchangeRates);
+			const statementsTable = el.createEl("div", {
+				cls: ["border", "border-gray-100", "rounded-sm"],
+			});
+			const evals: Array<Evals> = evalBlocks.map((evalBlock) => {
+				let interpretOutput: InterpreterOutput | undefined = undefined;
+				if (evalBlock.trim() !== "") {
+					interpretOutput = blockREPL?.interpret(evalBlock);
+				}
+				return {
+					codeBlock: evalBlock,
+					evaluation: interpretOutput,
+				};
+			});
+			renderEvals(statementsTable, evals);
+		} catch (error) {
+			console.error(error);
+			el.createEl("div", { text: error });
+		}
+	}
+
 	settings: RechnerPluginSettings;
 	async onload(): Promise<void> {
-		console.log("loading plugin");
-		// TODO: await in paralell
 		const settings = await this.loadSettings();
-
-		let numbatKernel: NumbatKernel | null;
-		try {
-			numbatKernel = new NumbatKernel(settings);
-			numbatKernel.init();
-		} catch {
-			console.error("failed to load numbat kernel");
-		}
-
 		this.addSettingTab(new RechnerPluginSettingsTab(this.app, this));
 
-		const handler = (
-			source: string,
-			el: HTMLElement,
-			ctx: MarkdownPostProcessorContext,
-		) => {
-			try {
-				const numbat = numbatKernel?.new();
-				// numbat.set_exchange_rates(exchangeRates);
-				const statementsTable = el.createEl("div", {
-					cls: ["border", "border-gray-100", "rounded-sm"],
-				});
-				const evalBlocks = source.split("\n\n");
-				instrument(
-					`evaluate-block-${ctx.sourcePath || "none"}-${ctx.docId}`,
-					() => {
-						const evals: Array<Evals> = evalBlocks.map(
-							(evalBlock) => {
-								let interpretOutput:
-									| InterpreterOutput
-									| undefined = undefined;
-								if (evalBlock.trim() !== "") {
-									interpretOutput =
-										numbat?.interpret(evalBlock);
-								}
-								return {
-									codeBlock: evalBlock,
-									evaluation: interpretOutput,
-								};
-							},
-						);
-						renderEvals(statementsTable, evals);
-					},
-				);
-			} catch (error) {
-				console.error(error);
-				el.createEl("div", { text: error });
-			}
-		};
-		["numbat", "nbt"].map((codeblockname) =>
-			this.registerMarkdownCodeBlockProcessor(codeblockname, handler),
-		);
+		let numbatKernel: NumbatKernel = new NumbatKernel(settings);
+		await numbatKernel.init();
+		this.blankREPL = numbatKernel.new();
+
+		for (const codeblockname of ["numbat", "nbt"]) {
+			this.registerMarkdownCodeBlockProcessor(
+				codeblockname,
+				this.blockHandler.bind(this),
+				100,
+			);
+		}
 	}
 
 	async loadSettings() {

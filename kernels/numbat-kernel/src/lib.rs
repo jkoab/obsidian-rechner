@@ -64,6 +64,16 @@ impl Numbat {
             format_type,
         }
     }
+
+    #[wasm_bindgen]
+    pub fn clone(&self) -> Numbat {
+        Numbat {
+            ctx: self.ctx.clone(),
+            enable_pretty_printing: self.enable_pretty_printing,
+            format_type: self.format_type,
+        }
+    }
+
     #[wasm_bindgen(js_name = "setExchangeRates")]
     pub fn set_exchange_rates(&mut self, xml_content: &str) {
         Context::set_exchange_rates(xml_content);

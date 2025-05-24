@@ -20,6 +20,10 @@ async function getExchangeRates() {
 class NumbatREPLContext implements REPLContext {
 	ctx: Numbat;
 
+	clone() {
+		return new NumbatREPLContext(this.ctx.clone());
+	}
+
 	constructor(ctx: Numbat) {
 		this.ctx = ctx;
 	}
@@ -37,7 +41,7 @@ class NumbatKernel implements Kernel {
 
 	new() {
 		const numbat = Numbat.new(true, false, FormatType.Html);
-		return new NumbatREPLContext(numbat);
+		return new NumbatREPLContext(numbat) as REPLContext;
 	}
 }
 

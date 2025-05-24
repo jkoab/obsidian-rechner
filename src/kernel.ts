@@ -12,6 +12,7 @@ interface Evals {
 
 abstract class REPLContext {
 	abstract interpret(code: string): InterpreterOutput;
+	abstract clone(): REPLContext;
 }
 abstract class Kernel {
 	abstract new(): REPLContext;
