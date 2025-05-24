@@ -1,13 +1,14 @@
 {
 	"name": "obsidian-numbat-plugin",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
 	"main": "main.js",
 	"scripts": {
 		"wasm": "wasm-pack build --target=web ./kernels/numbat-kernel --release",
 		"dev": "NODE_ENV=development vite build --mode development --watch",
 		"build": "tsc -noEmit -skipLibCheck && vite build --mode production",
-		"version": "node version-bump.mjs && git add manifest.json versions.json"
+		"version": "node version-bump.mjs && git add manifest.json versions.json",
+		"tag": "node tag.mjs"
 	},
 	"type": "module",
 	"keywords": [],
