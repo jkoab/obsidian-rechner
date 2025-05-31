@@ -13,6 +13,7 @@ import {
 import "./index.css";
 import { Evals, InterpreterOutput, REPLContext } from "./kernel";
 import { NumbatKernel } from "./numbat";
+import { NumbatSuggester } from "./NumbatSuggester";
 import { DEFAULT_SETTINGS, RechnerPluginSettings } from "./settings";
 
 class RechnerPluginSettingsTab extends PluginSettingTab {
@@ -29,14 +30,25 @@ class RechnerPluginSettingsTab extends PluginSettingTab {
 		containerEl.empty();
 
 		new Setting(containerEl)
-			.setName("Settings")
-			.setDesc("General settings")
+			.setName("Locale")
+			.setDesc("Locale settings")
 			.addText((text) =>
 				text
-					.setPlaceholder("Locale")
+					.setPlaceholder("en")
 					.setValue(this.plugin.settings.locale)
 					.onChange(async (value) => {
 						this.plugin.settings.locale = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+		new Setting(containerEl)
+			.setName("Suggestions")
+			.setDesc("Turn on code suggestions")
+			.addToggle((t) =>
+				t
+					.setValue(this.plugin.settings.autoSuggest)
+					.onChange(async (v) => {
+						this.plugin.settings.autoSuggest = v;
 						await this.plugin.saveSettings();
 					}),
 			);
@@ -160,6 +172,15 @@ export default class RechnerPlugin extends Plugin {
 				this.blockHandler.bind(this),
 				100,
 			);
+		}
+		if (settings.autoSuggest) {
+			const numbatSuggester = new NumbatSuggester(
+				this.app,
+				this.settings,
+				numbatKernel.new().ctx,
+			);
+			this.registerEditorSuggest(numbatSuggester);
+			numbatSuggester.close();
 		}
 	}
 

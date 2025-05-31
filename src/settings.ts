@@ -6,6 +6,7 @@ enum Kernel {
 interface RechnerPluginSettings {
 	locale: string;
 	activeKernels: Map<Kernel, boolean>;
+	autoSuggest: boolean;
 }
 
 function kernelDefaults(): Map<Kernel, boolean> {
@@ -17,6 +18,7 @@ function kernelDefaults(): Map<Kernel, boolean> {
 const DEFAULT_SETTINGS: RechnerPluginSettings = {
 	locale: "default",
 	activeKernels: kernelDefaults(),
+	autoSuggest: false,
 };
 
 export type { Kernel, RechnerPluginSettings };

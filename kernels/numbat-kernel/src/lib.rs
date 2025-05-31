@@ -14,11 +14,32 @@ use numbat::module_importer::BuiltinModuleImporter;
 use numbat::pretty_print::PrettyPrint;
 use numbat::resolver::CodeSource;
 use numbat::{markup as m, NameResolutionError, NumbatError};
-use numbat::{Context, InterpreterSettings};
+use numbat::{Context, InterpreterResult, InterpreterSettings};
 
 #[wasm_bindgen]
 pub fn setup_panic_hook() {
     utils::set_panic_hook();
+}
+
+#[wasm_bindgen]
+#[derive(Debug, Clone, Copy)]
+pub enum CompletionType {
+    Unknown = "Unknown",
+    Funtion = "Funtion",
+    CommonMetricPrefix = "CommonMetricPrefix",
+    Keyword = "Keyword",
+    VariableName = "VariableName",
+    UnicodeInput = "UnicodeInput",
+    FunctionName = "FunctionName",
+    DimensionName = "DimensionName",
+    UnitRepresentation = "UnitRepresentation",
+}
+
+#[wasm_bindgen(getter_with_clone)]
+#[derive(Debug, Clone)]
+pub struct TypedCompletion {
+    pub text: String,
+    pub ctype: CompletionType,
 }
 
 #[wasm_bindgen]
@@ -183,11 +204,34 @@ impl Numbat {
         self.format(&output, true).into()
     }
 
-    pub fn get_completions_for(&self, input: &str) -> Vec<JsValue> {
-        self.ctx
+    #[wasm_bindgen(js_name = "getCompletionsFor")]
+    pub fn get_completions_for(&self, input: &str) -> Vec<String> {
+        // let suggestions = js_sys::Array::new();
+        let completions = self
+            .ctx
             .get_completions_for(input, false)
             .map(|s| s.trim().trim_end_matches('(').into())
-            .collect()
+            .collect();
+        completions
+    }
+
+    #[wasm_bindgen(js_name = "getTypedCompletionsFor")]
+    pub fn get_typed_completions_for(
+        &self,
+        word_part: &str,
+        add_paren: bool,
+    ) -> Vec<TypedCompletion> {
+        // TODO: add proper types
+        let completions = self
+            .ctx
+            .get_completions_for(word_part, add_paren)
+            // .map(|s| s.trim().trim_end_matches('(').into())
+            .map(|s| TypedCompletion {
+                text: s,
+                ctype: CompletionType::Unknown,
+            })
+            .collect();
+        completions
     }
 
     fn print_diagnostic(&self, error: &dyn ErrorDiagnostic) -> InterpreterOutput {

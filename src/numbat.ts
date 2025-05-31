@@ -1,4 +1,4 @@
-import { requestUrl } from "obsidian";
+import { requestUrl, PopoverSuggest, ISuggestOwner } from "obsidian";
 import init, {
 	Numbat,
 	InterpreterOutput as NumbatInterpreterOutput,
@@ -39,9 +39,9 @@ class NumbatKernel implements Kernel {
 		setup_panic_hook();
 	}
 
-	new() {
+	new(): NumbatREPLContext {
 		const numbat = Numbat.new(true, false, FormatType.Html);
-		return new NumbatREPLContext(numbat) as REPLContext;
+		return new NumbatREPLContext(numbat);
 	}
 }
 
