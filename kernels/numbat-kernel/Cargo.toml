@@ -27,3 +27,6 @@ default = ["console_error_panic_hook"]
 # Tell `rustc` to optimize for small code size.
 opt-level = "z"
 lto = true
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = ["-Oz", "--enable-nontrapping-float-to-int", "--enable-bulk-memory"]
