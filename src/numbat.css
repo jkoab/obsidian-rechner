@@ -4,22 +4,6 @@
 	@apply opacity-10 px-0.5;
 }
 
-.numbat-code {
-	color: var(--code-normal);
-	font-family: var(--font-monospace);
-	background-color: var(--code-background);
-	border-radius: var(--code-radius);
-	font-size: var(--code-size);
-	padding: 0.15em 0.3em;
-	border: var(--code-border-width) solid var(--code-border-color);
-	-webkit-box-decoration-break: clone;
-}
-
-.numbat-code-eval-error {
-	@apply bg-red-200;
-	white-space-collapse: preserve;
-}
-
 .numbat-diagnostic-blue {
 	color: rgb(32, 94, 166);
 }

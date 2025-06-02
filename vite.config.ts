@@ -8,7 +8,7 @@ const prod = process.env.NODE_ENV === "production";
 /**
  * Location of the test vault plugin directory
  */
-const devOutDir = "./test-vault-numbat/.obsidian/plugins/numbat-obsidian";
+const devOutDir = "./test-vault-numbat/.obsidian/plugins/rechner-obsidian";
 const finalOutDir = prod ? "dist" : devOutDir;
 
 function hotReloadFilePlugin(): Plugin {

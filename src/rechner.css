@@ -1,0 +1,45 @@
+@reference "./index.css";
+
+.rechner-code-block {
+	@apply p-0  flex flex-col;
+	@apply gap-(--border-width);
+
+	background-color: var(--background-modifier-border);
+	font-family: var(--font-monospace);
+	font-size: var(--code-size);
+}
+.rechner-cell {
+	@apply flex flex-wrap items-stretch;
+	@apply gap-(--border-width);
+	background-color: var(--background-modifier-border);
+}
+.rechner-cell-code {
+	@apply flex flex-1;
+	@apply p-2;
+	@apply whitespace-pre;
+	/* @apply bg-pink-100; */
+	background-color: var(--code-background);
+}
+.rechner-output-cell {
+	@apply flex  flex-1 items-end;
+	@apply whitespace-pre;
+	@apply p-2;
+	@apply bg-green-200;
+	color: var(--code-normal);
+	-webkit-box-decoration-break: clone;
+	@apply bg-green-100;
+}
+.rechner-cell-eval-ok-border {
+	/* @apply border border-green-700; */
+}
+
+.rechner-cell-error {
+	@apply py-2 flex-1 whitespace-pre self-end bg-red-100 w-full;
+}
+.rechner-cell-error-border {
+	@apply bg-red-50;
+	background-color: lch(from var(--background-modifier-error) 100 c h);
+	@apply border-red-700;
+	white-space-collapse: preserve;
+	@apply flex-col;
+}

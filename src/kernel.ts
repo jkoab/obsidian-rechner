@@ -3,9 +3,9 @@ interface InterpreterOutput {
 	output: string;
 }
 
-interface Evals {
-	codeBlock: string;
-	evaluation?: InterpreterOutput;
+interface CodeCell {
+	code: string;
+	outputs?: InterpreterOutput;
 }
 
 abstract class REPLContext {
@@ -17,4 +17,4 @@ abstract class Kernel {
 	abstract new(): REPLContext;
 }
 export { Kernel, REPLContext };
-export type { InterpreterOutput, Evals };
+export type { InterpreterOutput, CodeCell };

@@ -101,7 +101,7 @@ const context = await esbuild.context({
 	treeShaking: true,
 	outfile: prod
 		? "main.js"
-		: "./test-vault-numbat/.obsidian/plugins/numbat-obsidian/main.js",
+		: "./test-vault-numbat/.obsidian/plugins/rechner-obsidian/main.js",
 	minify: prod,
 	plugins: [
 		wasmPlugin,

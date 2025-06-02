@@ -11,7 +11,8 @@ import {
 } from "obsidian";
 
 import "./index.css";
-import { Evals, InterpreterOutput, REPLContext } from "./kernel";
+import "./rechner.css";
+import { InterpreterOutput, REPLContext, CodeCell } from "./kernel";
 import { NumbatKernel } from "./numbat";
 import { NumbatSuggester } from "./NumbatSuggester";
 import { DEFAULT_SETTINGS, RechnerPluginSettings } from "./settings";
@@ -56,57 +57,51 @@ class RechnerPluginSettingsTab extends PluginSettingTab {
 }
 
 function renderError(error: string): Element {
-	const pre = document.createElement("pre");
-	pre.classList.add(
-		...["numbat-code", "numbat-code-error", "bg-red-200", "p-2"],
-	);
-	pre.innerHTML = error;
+	const pre = document.createElement("div");
+	pre.classList.add(...["rechner-output-cell", "rechner-cell-error"]);
+	const errorspan = pre.createEl("span");
+	errorspan.innerHTML = error;
 	return pre;
 }
 
-function renderEvals(element: Element, evals: Array<Evals>): void {
-	for (const [idx, { codeBlock, evaluation }] of evals.entries()) {
-		const evaluatedBlock = element.createEl("div", {
-			cls: ["flex", "border", "border-y", "border-gray-100"],
-		});
+function renderCodeCells(element: Element, evals: Array<CodeCell>): void {
+	for (const [idx, codeCell] of evals.entries()) {
+		const codeCellContainer = element.createEl(
+			"div",
+			{
+				cls: ["rechner-cell"],
+			},
+			(container) => {
+				container.id = `code-cell-${idx}`;
+			},
+		);
 
-		const codeBlockContainer = evaluatedBlock.createEl("div", {
-			cls: [
-				"numbat-code",
-				"flex",
-				"font-mono",
-				"p-2",
-				"flex-col",
-				"w-2/3",
-			],
+		const codeCellCodeNode = codeCellContainer.createEl("div", {
+			cls: ["rechner-cell-code"],
 		});
-		codeBlockContainer.createEl("pre", {
-			text: codeBlock,
+		codeCellCodeNode.createEl("span", {
+			text: codeCell.code,
 			cls: [""],
 		});
+		// flex spacer
+		// codeCellContainer.createEl("div", {
+		// 	cls: ["flex-shrink", "border"],
+		// });
 
-		if (evaluation?.isError) {
-			const errEl = renderError(evaluation.output);
-			evaluatedBlock.appendChild(errEl);
+		if (codeCell.outputs?.isError) {
+			const errEl = renderError(codeCell.outputs.output);
+			codeCellContainer.appendChild(errEl);
+			codeCellContainer.addClass("rechner-cell-error-border");
 		} else {
-			const evalEl = evaluatedBlock.createEl("pre", {
-				cls: [
-					"numbat-code",
-					"whitespace-pre",
-					"w-1/3",
-					"bg-green-50",
-					"p-2",
-					"flex",
-					"font-mono",
-					"flex-col",
-					"justify-end",
-				],
-			});
-			const evalLine = evalEl.createEl("div", {
-				cls: ["justify-normal"],
-			});
-			if (evaluation) {
-				evalLine.innerHTML = evaluation.output.trim() as string;
+			if (codeCell.outputs?.output) {
+				codeCellContainer.addClass("rechner-cell-eval-ok-border");
+				const evalEl = codeCellContainer.createEl("div", {
+					cls: ["rechner-output-cell"],
+				});
+				const evalLine = evalEl.createEl("div", {
+					// cls: ["justify-normal"],
+				});
+				evalLine.innerHTML = codeCell.outputs.output.trim() as string;
 			}
 		}
 	}
@@ -130,33 +125,36 @@ export default class RechnerPlugin extends Plugin {
 
 	async blockHandler(
 		source: string,
-		el: HTMLElement,
+		container: HTMLElement,
 		ctx: MarkdownPostProcessorContext,
 	) {
 		try {
+			container.addClasses([
+				"rechner-code-block",
+				"border",
+				"border-gray-100",
+				"rounded-sm",
+				"px-3",
+				"py-2",
+			]);
+
 			const blockREPL = this.blankREPL.clone();
-			const evalBlocks = source.split("\n\n");
-
-			// numbat.set_exchange_rates(exchangeRates);
-			const statementsTable = el.createEl("div", {
-				cls: ["border", "border-gray-100", "rounded-sm"],
-			});
-			const evals: Array<Evals> = evalBlocks.map((evalBlock) => {
-				let interpretOutput: InterpreterOutput | undefined = undefined;
-				if (evalBlock.trim() !== "") {
-					interpretOutput = blockREPL?.interpret(evalBlock);
-				}
-				return {
-					codeBlock: evalBlock,
-					evaluation: interpretOutput,
-				};
-			});
-			renderEvals(statementsTable, evals);
-
-			const wasmplc = statementsTable.createEl("div", {}, (el) => {
-				el.id = "wasm";
-			});
-			blockREPL.interpretToNode(wasmplc, "2+2");
+			const rawCodeCells = source.split("\n\n");
+			const evaluatedCodeCells: Array<CodeCell> = rawCodeCells.map(
+				(codecell) => {
+					if (codecell.trim() !== "") {
+						return {
+							code: codecell,
+							outputs: blockREPL?.interpret(codecell),
+						};
+					} else {
+						return {
+							code: codecell,
+						};
+					}
+				},
+			);
+			renderCodeCells(container, evaluatedCodeCells);
 		} catch (error) {
 			console.error(error);
 			if (error instanceof Error) {
