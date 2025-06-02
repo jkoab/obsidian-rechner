@@ -7,7 +7,9 @@ edition = "2021"
 wasm-bindgen-test = "0.3.40"
 [dependencies]
 codespan-reporting = "0.11.1"
-numbat ={ version = "1.16.0", features = ["html-formatter"], default-features = false}
+numbat = { version = "1.16.0", features = [
+	"html-formatter",
+], default-features = false }
 wasm-bindgen = "0.2.90"
 getrandom = { version = "0.2.12", features = ["js"] }
 
@@ -16,6 +18,15 @@ getrandom = { version = "0.2.12", features = ["js"] }
 # all the `std::fmt` and `std::panicking` infrastructure, so isn't great for
 # code size when deploying.
 console_error_panic_hook = { version = "0.1.6", optional = true }
+web-sys = { version = "0.3.77", features = [
+	"Document",
+	"Element",
+	"Node",
+	"Window",
+	"DocumentFragment",
+	"console",
+] }
+thiserror = "2.0.12"
 
 [lib]
 crate-type = ["cdylib", "rlib"]

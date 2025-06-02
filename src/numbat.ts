@@ -1,7 +1,6 @@
-import { requestUrl, PopoverSuggest, ISuggestOwner } from "obsidian";
+// import { requestUrl } from "obsidian";
 import init, {
 	Numbat,
-	InterpreterOutput as NumbatInterpreterOutput,
 	setup_panic_hook,
 	FormatType,
 } from "@numbat-kernel/numbat_kernel";
@@ -10,12 +9,12 @@ import { RechnerPluginSettings } from "./settings";
 import "./numbat.css";
 import { InterpreterOutput, Kernel, REPLContext } from "./kernel";
 
-async function getExchangeRates() {
-	const response = await requestUrl(
-		"https://numbat.dev/ecb-exchange-rates.php",
-	).text;
-	return response;
-}
+// async function getExchangeRates() {
+// 	const response = await requestUrl(
+// 		"https://numbat.dev/ecb-exchange-rates.php",
+// 	).text;
+// 	return response;
+// }
 
 class NumbatREPLContext implements REPLContext {
 	ctx: Numbat;
@@ -29,6 +28,10 @@ class NumbatREPLContext implements REPLContext {
 	}
 	interpret(code: string): InterpreterOutput {
 		return this.ctx.interpret(code);
+	}
+
+	interpretToNode(node: Node, code: string) {
+		this.ctx.interpretToNode(node, code);
 	}
 }
 

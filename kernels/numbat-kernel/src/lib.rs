@@ -6,6 +6,7 @@ use std::sync::{Arc, Mutex};
 use wasm_bindgen::prelude::*;
 
 use numbat::buffered_writer::BufferedWriter;
+use numbat::diagnostic::Diagnostic;
 use numbat::diagnostic::ErrorDiagnostic;
 use numbat::help::help_markup;
 use numbat::html_formatter::{HtmlFormatter, HtmlWriter};
@@ -15,6 +16,8 @@ use numbat::pretty_print::PrettyPrint;
 use numbat::resolver::CodeSource;
 use numbat::{markup as m, NameResolutionError, NumbatError};
 use numbat::{Context, InterpreterResult, InterpreterSettings};
+use thiserror::Error;
+use web_sys::{window, DocumentFragment, Node};
 
 #[wasm_bindgen]
 pub fn setup_panic_hook() {
@@ -64,10 +67,35 @@ pub struct InterpreterOutput {
 }
 
 #[wasm_bindgen]
+#[derive(Debug, Clone)]
+pub struct InterpreterDetails {
+    #[wasm_bindgen(js_name = "isError")]
+    pub is_error: bool,
+}
+impl From<InterpreterOutput> for InterpreterDetails {
+    fn from(details: InterpreterOutput) -> Self {
+        InterpreterDetails {
+            is_error: details.is_error,
+        }
+    }
+}
+
+#[wasm_bindgen]
 impl InterpreterOutput {
     #[wasm_bindgen(getter)]
     pub fn output(&self) -> String {
         self.output.clone()
+    }
+}
+#[derive(Debug, Clone, Error)]
+pub enum KernelError {
+    #[error("DOMError:")]
+    DOMError(),
+}
+
+impl ErrorDiagnostic for KernelError {
+    fn diagnostics(&self) -> Vec<Diagnostic> {
+        vec![Diagnostic::error()]
     }
 }
 
@@ -110,6 +138,87 @@ impl Numbat {
         };
         fmt.format(markup, indent).to_string()
     }
+    #[wasm_bindgen(js_name = "interpretToNode")]
+    pub fn interpret_to_node(&mut self, node: &Node, code: &str) -> InterpreterDetails {
+        let document = match window() {
+            Some(win) => match win.document() {
+                Some(doc) => doc,
+                None => {
+                    return self.print_diagnostic(&KernelError::DOMError()).into();
+                }
+            },
+            None => {
+                return self.print_diagnostic(&KernelError::DOMError()).into();
+            }
+        };
+
+        let fragment: DocumentFragment = document.create_document_fragment();
+        let div = match document.create_element("div") {
+            Ok(div) => div,
+            Err(_) => {
+                return self.print_diagnostic(&KernelError::DOMError()).into();
+            }
+        };
+
+        div.set_text_content(Some("Hello from wasm"));
+
+        if fragment.append_child(&div).is_err() {
+            return self.print_diagnostic(&KernelError::DOMError()).into();
+        }
+
+        let mut output = String::new();
+
+        let to_be_printed: Arc<Mutex<Vec<m::Markup>>> = Arc::new(Mutex::new(vec![]));
+        let to_be_printed_c = to_be_printed.clone();
+        let mut settings = InterpreterSettings {
+            print_fn: Box::new(move |s: &m::Markup| {
+                to_be_printed_c.lock().unwrap().push(s.clone());
+            }),
+        };
+
+        let nl = &self.format(&numbat::markup::nl(), false);
+
+        let enable_indentation = match self.format_type {
+            FormatType::Html => false,
+        };
+
+        match self
+            .ctx
+            .interpret_with_settings(&mut settings, code, CodeSource::Text)
+            .map_err(|b| *b)
+        {
+            Ok((statements, result)) => {
+                // print(…) and type(…) results
+                let to_be_printed = to_be_printed.lock().unwrap();
+                for content in to_be_printed.iter() {
+                    output.push_str(&self.format(content, enable_indentation));
+                    output.push_str(nl);
+                }
+
+                let result_markup = result.to_markup(
+                    statements.last(),
+                    &self.ctx.dimension_registry().clone(),
+                    true,
+                    true,
+                );
+                output.push_str(&self.format(&result_markup, enable_indentation));
+
+                node.append_child(&fragment);
+                InterpreterOutput {
+                    output,
+                    is_error: false,
+                }
+                .into()
+            }
+            Err(NumbatError::ResolverError(e)) => self.print_diagnostic(&e).into(),
+            Err(NumbatError::NameResolutionError(
+                e @ (NameResolutionError::IdentifierClash { .. }
+                | NameResolutionError::ReservedIdentifier(_)),
+            )) => self.print_diagnostic(&e).into(),
+            Err(NumbatError::TypeCheckError(e)) => self.print_diagnostic(&e).into(),
+            Err(NumbatError::RuntimeError(e)) => self.print_diagnostic(&e).into(),
+        }
+    }
 
     pub fn interpret(&mut self, code: &str) -> InterpreterOutput {
         let mut output = String::new();
@@ -134,17 +243,6 @@ impl Numbat {
             .map_err(|b| *b)
         {
             Ok((statements, result)) => {
-                // Pretty print
-                if self.enable_pretty_printing {
-                    output.push_str(nl);
-                    for statement in &statements {
-                        output
-                            .push_str(&self.format(&statement.pretty_print(), enable_indentation));
-                        output.push_str(nl);
-                    }
-                    output.push_str(nl);
-                }
-
                 // print(…) and type(…) results
                 let to_be_printed = to_be_printed.lock().unwrap();
                 for content in to_be_printed.iter() {

@@ -1,5 +1,3 @@
-import { REPLServer } from "repl";
-
 interface InterpreterOutput {
 	isError: boolean;
 	output: string;
@@ -12,6 +10,7 @@ interface Evals {
 
 abstract class REPLContext {
 	abstract interpret(code: string): InterpreterOutput;
+	abstract interpretToNode(node: Node, code: string): void;
 	abstract clone(): REPLContext;
 }
 abstract class Kernel {

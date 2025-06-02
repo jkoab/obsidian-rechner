@@ -112,18 +112,18 @@ function renderEvals(element: Element, evals: Array<Evals>): void {
 	}
 }
 
-function instrument(spanName: string, fun: () => void) {
-	const start = performance.now();
-	fun();
-	const end = performance.now();
-	const timing = end - start;
-	const logmessage = `${spanName}: ${timing} ms`;
-	if (timing > 30) {
-		console.warn(logmessage);
-	} else {
-		console.log(logmessage);
-	}
-}
+// function instrument(spanName: string, fun: () => void) {
+// 	const start = performance.now();
+// 	fun();
+// 	const end = performance.now();
+// 	const timing = end - start;
+// 	const logmessage = `${spanName}: ${timing} ms`;
+// 	if (timing > 30) {
+// 		console.warn(logmessage);
+// 	} else {
+// 		console.log(logmessage);
+// 	}
+// }
 
 export default class RechnerPlugin extends Plugin {
 	private blankREPL: REPLContext;
@@ -136,6 +136,7 @@ export default class RechnerPlugin extends Plugin {
 		try {
 			const blockREPL = this.blankREPL.clone();
 			const evalBlocks = source.split("\n\n");
+
 			// numbat.set_exchange_rates(exchangeRates);
 			const statementsTable = el.createEl("div", {
 				cls: ["border", "border-gray-100", "rounded-sm"],
@@ -151,9 +152,16 @@ export default class RechnerPlugin extends Plugin {
 				};
 			});
 			renderEvals(statementsTable, evals);
+
+			const wasmplc = statementsTable.createEl("div", {}, (el) => {
+				el.id = "wasm";
+			});
+			blockREPL.interpretToNode(wasmplc, "2+2");
 		} catch (error) {
 			console.error(error);
-			el.createEl("div", { text: error });
+			if (error instanceof Error) {
+				el.createEl("div", { text: error.message });
+			}
 		}
 	}
 
@@ -162,7 +170,7 @@ export default class RechnerPlugin extends Plugin {
 		const settings = await this.loadSettings();
 		this.addSettingTab(new RechnerPluginSettingsTab(this.app, this));
 
-		let numbatKernel: NumbatKernel = new NumbatKernel(settings);
+		const numbatKernel: NumbatKernel = new NumbatKernel(settings);
 		await numbatKernel.init();
 		this.blankREPL = numbatKernel.new();
 
@@ -180,7 +188,6 @@ export default class RechnerPlugin extends Plugin {
 				numbatKernel.new().ctx,
 			);
 			this.registerEditorSuggest(numbatSuggester);
-			numbatSuggester.close();
 		}
 	}
 
@@ -195,6 +202,6 @@ export default class RechnerPlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
-		console.log(`settings saved: ${JSON.stringify(this.settings)}`);
+		console.debug(`settings saved: ${JSON.stringify(this.settings)}`);
 	}
 }
