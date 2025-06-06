@@ -1,17 +1,41 @@
 @reference "./index.css";
 
-.rechner-code-block {
-	@apply p-0  flex flex-col;
-	@apply gap-(--border-width);
+.theme-dark {
+	/* --rechner-background-primary: var(--code-background); */
+	--rechner-background-secondary: var(--background-modifier-border);
+	--rechner-background-primary-ok: lch(from var(--code-background) l c h);
+	--rechner-background-primary-error: lch(
+		from var(--background-modifier-error) l c h
+	);
+}
 
-	background-color: var(--background-modifier-border);
+.theme-light {
+	--rechner-background-primary: var(--code-background);
+	--rechner-background-secondary: var(--background-modifier-border);
+	--rechner-background-primary-ok: lch(from var(--code-background) l c h);
+	--rechner-background-primary-error: lch(
+		from var(--background-modifier-error) 99 c h
+	);
+}
+
+.rechner-code-block {
+	@apply flex flex-col overflow-visible;
+	gap: var(--size-2-2);
+
+	/* background-color: var(--rechner-background-secondary); */
 	font-family: var(--font-monospace);
 	font-size: var(--code-size);
+	color: var(--code-normal);
 }
 .rechner-cell {
-	@apply flex flex-wrap items-stretch;
-	@apply gap-(--border-width);
-	background-color: var(--background-modifier-border);
+	border-style: solid;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: stretch;
+	border-width: var(--border-width);
+	gap: var(--border-width);
+	border-color: var(--rechner-background-secondary);
+	background-color: var(--rechner-background-secondary);
 }
 .rechner-cell-code {
 	@apply flex flex-1;
@@ -22,24 +46,30 @@
 }
 .rechner-output-cell {
 	@apply flex  flex-1 items-end;
-	@apply whitespace-pre;
 	@apply p-2;
-	@apply bg-green-200;
-	color: var(--code-normal);
+	white-space: pre;
+	background-color: var(--rechner-background-primary-ok);
 	-webkit-box-decoration-break: clone;
-	@apply bg-green-100;
+	color: var(--code-value);
+	/* @apply whitespace-pre; */
+	/* @apply bg-green-100; */
 }
 .rechner-cell-eval-ok-border {
 	/* @apply border border-green-700; */
 }
 
 .rechner-cell-error {
-	@apply py-2 flex-1 whitespace-pre self-end bg-red-100 w-full;
+	@apply py-2 flex-1 whitespace-pre self-end w-full;
+	background-color: var(--rechner-background-primary-error);
+	color: var(--code-normal);
 }
-.rechner-cell-error-border {
-	@apply bg-red-50;
-	background-color: lch(from var(--background-modifier-error) 100 c h);
-	@apply border-red-700;
+.rechner-cell-error-container {
+	@apply flex flex-col;
+	background-color: var(--text-error);
+	border-color: var(--text-error);
 	white-space-collapse: preserve;
-	@apply flex-col;
+}
+
+.rechner-suggestions-type {
+	color: var(--code-comment);
 }

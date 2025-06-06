@@ -1,28 +1,32 @@
 @reference "./index.css";
 
 .numbat-dimmed {
-	@apply opacity-10 px-0.5;
+	color: var(--text-faint);
 }
 
 .numbat-diagnostic-blue {
-	color: rgb(32, 94, 166);
+	color: var(--color-blue);
 }
 
-.numbat-diagnostic-bold {
-	font-weight: bold;
-}
 .numbat-diagnostic-red {
-	color: rgb(175, 48, 41);
+	color: var(--text-error);
 }
+
 .numbat-value {
-	@apply text-blue-800;
+	/* @apply text-blue-800; */
+	color: var(--code-value);
 }
 .numbat-unit {
-	@apply text-violet-800;
+	color: var(--code-keyword);
 }
 .numbat-operator {
+	color: var(--code-operator);
 }
 
 .numbat-type-identifier {
-	color: rgb(160, 47, 111);
+	color: var(--code-keyword);
+}
+
+.numbat-diagnostic-bold {
+	font-weight: var(--font-bold);
 }
