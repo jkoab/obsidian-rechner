@@ -6,18 +6,7 @@ edition = "2021"
 [dev-dependencies]
 wasm-bindgen-test = "0.3.40"
 [dependencies]
-codespan-reporting = "0.11.1"
-numbat = { version = "1.16.0", features = [
-	"html-formatter",
-], default-features = false }
 wasm-bindgen = "0.2.90"
-getrandom = { version = "0.2.12", features = ["js"] }
-
-# The `console_error_panic_hook` crate provides better debugging of panics by
-# logging them with `console.error`. This is great for development, but requires
-# all the `std::fmt` and `std::panicking` infrastructure, so isn't great for
-# code size when deploying.
-console_error_panic_hook = { version = "0.1.6", optional = true }
 web-sys = { version = "0.3.77", features = [
 	"Document",
 	"Element",
@@ -26,10 +15,22 @@ web-sys = { version = "0.3.77", features = [
 	"DocumentFragment",
 	"console",
 ] }
+
+numbat = { version = "1.16.0", features = [
+	"html-formatter",
+], default-features = false }
+getrandom = { version = "0.3", features = ["wasm_js"] }
+
+# The `console_error_panic_hook` crate provides better debugging of panics by
+# logging them with `console.error`. This is great for development, but requires
+# all the `std::fmt` and `std::panicking` infrastructure, so isn't great for
+# code size when deploying.
+console_error_panic_hook = { version = "0.1.6", optional = true }
+codespan-reporting = "0.11.1"
 thiserror = "2.0.12"
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["cdylib"]
 
 [features]
 default = ["console_error_panic_hook"]
@@ -38,6 +39,12 @@ default = ["console_error_panic_hook"]
 # Tell `rustc` to optimize for small code size.
 opt-level = "z"
 lto = true
+# strip = "debuginfo"
+codegen-units = 1
+# panic = "abort"
 
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = ["-Oz", "--enable-nontrapping-float-to-int", "--enable-bulk-memory"]
+
+[patch.crates-io]
+numbat = { git = "https://github.com/jkoab/numbat.git", branch = "wasm-binary-size" }

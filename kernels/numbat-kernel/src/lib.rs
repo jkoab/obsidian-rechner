@@ -12,12 +12,11 @@ use numbat::help::help_markup;
 use numbat::html_formatter::{HtmlFormatter, HtmlWriter};
 use numbat::markup::Formatter;
 use numbat::module_importer::BuiltinModuleImporter;
-use numbat::pretty_print::PrettyPrint;
 use numbat::resolver::CodeSource;
 use numbat::{markup as m, NameResolutionError, NumbatError};
-use numbat::{Context, InterpreterResult, InterpreterSettings};
+use numbat::{Context, InterpreterSettings};
 use thiserror::Error;
-use web_sys::{window, DocumentFragment, Node};
+use web_sys::{console, window, DocumentFragment, Node};
 
 #[wasm_bindgen]
 pub fn setup_panic_hook() {
@@ -104,7 +103,12 @@ impl Numbat {
     pub fn new(load_prelude: bool, enable_pretty_printing: bool, format_type: FormatType) -> Self {
         let mut ctx = Context::new(BuiltinModuleImporter::default());
         if load_prelude {
-            let _ = ctx.interpret("use prelude", CodeSource::Internal).unwrap();
+            match ctx.interpret("use prelude", CodeSource::Internal) {
+                Ok(_) => {}
+                Err(e) => {
+                    console::error_1(&e.to_string().into());
+                }
+            }
         }
         ctx.set_terminal_width(Some(84)); // terminal width with current layout
         Numbat {
@@ -123,14 +127,14 @@ impl Numbat {
         }
     }
 
-    #[wasm_bindgen(js_name = "setExchangeRates")]
-    pub fn set_exchange_rates(&mut self, xml_content: &str) {
-        Context::set_exchange_rates(xml_content);
-        let _ = self
-            .ctx
-            .interpret("use units::currencies", CodeSource::Internal)
-            .unwrap();
-    }
+    // #[wasm_bindgen(js_name = "setExchangeRates")]
+    // pub fn set_exchange_rates(&mut self, xml_content: &str) {
+    //     Context::set_exchange_rates(xml_content);
+    //     let _ = self
+    //         .ctx
+    //         .interpret("use units::currencies", CodeSource::Internal)
+    //         .unwrap();
+    // }
 
     fn format(&self, markup: &numbat::markup::Markup, indent: bool) -> String {
         let fmt: Box<dyn Formatter> = match self.format_type {
@@ -297,10 +301,10 @@ impl Numbat {
         self.format(&help_markup(), true).into()
     }
 
-    pub fn print_info(&mut self, keyword: &str) -> JsValue {
-        let output = self.ctx.print_info_for_keyword(keyword);
-        self.format(&output, true).into()
-    }
+    // pub fn print_info(&mut self, keyword: &str) -> JsValue {
+    //     let output = self.ctx.print_info_for_keyword(keyword);
+    //     self.format(&output, true).into()
+    // }
 
     #[wasm_bindgen(js_name = "getCompletionsFor")]
     pub fn get_completions_for(&self, input: &str) -> Vec<String> {
