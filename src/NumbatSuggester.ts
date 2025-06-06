@@ -4,7 +4,6 @@ import {
 	Editor,
 	EditorPosition,
 	EditorSuggestTriggerInfo,
-	TFile,
 	App,
 } from "obsidian";
 import { Numbat, TypedCompletion } from "@numbat-kernel/numbat_kernel";
@@ -23,7 +22,7 @@ class NumbatSuggester extends EditorSuggest<TypedCompletion> {
 	}
 
 	findEndcapuslatingBlock() {
-		const { line, ch } = this.editor.getCursor();
+		const { line } = this.editor.getCursor();
 		const text = this.editor.getLine(line);
 		/^```nbt/.test(text);
 		/^```/.test(text);
@@ -44,21 +43,20 @@ class NumbatSuggester extends EditorSuggest<TypedCompletion> {
 		});
 		suggestion.createEl("div", {
 			text: value.ctype,
-			cls: ["text-gray-400", "pl-2"],
+			cls: ["rechner-suggestions-type", "pl-2"],
 		});
 	}
 	selectSuggestion(
 		value: TypedCompletion,
-		evt: MouseEvent | KeyboardEvent,
+		// evt: MouseEvent | KeyboardEvent,
 	): void {
-		console.dir({ evt });
 		const cursor = this.editor.getCursor();
 		const lineText = this.editor.getLine(cursor.line);
 		const from: EditorPosition = {
 			ch:
 				cursor.ch -
-				(lineText.substring(0, cursor.ch).match(/(\w+)$/)?.[0].length ||
-					0),
+				(lineText.substring(0, cursor.ch).match(/(\w+)$/)?.[0]
+					?.length || 0),
 			line: cursor.line,
 		};
 		this.editor.replaceRange(value.text, from, this.editor.getCursor());
@@ -66,15 +64,15 @@ class NumbatSuggester extends EditorSuggest<TypedCompletion> {
 	onTrigger(
 		cursor: EditorPosition,
 		editor: Editor,
-		file: TFile | null,
+		// file: TFile | null,
 	): EditorSuggestTriggerInfo | null {
 		this.editor = editor;
 		const lineText = editor.getLine(cursor.line);
 		const from: EditorPosition = {
 			ch:
 				cursor.ch -
-				(lineText.substring(0, cursor.ch).match(/(\w+)$/)?.[0].length ||
-					0),
+				(lineText.substring(0, cursor.ch).match(/(\w+)$/)?.[0]
+					?.length || 0),
 			line: cursor.line,
 		};
 		if (cursor.ch - from.ch <= 0) {

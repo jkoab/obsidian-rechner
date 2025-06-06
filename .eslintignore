@@ -1,2 +1,4 @@
 node_modules/
 **/*.mjs
+vite.config.ts
+.eslintrc.cjs

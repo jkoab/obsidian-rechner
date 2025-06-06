@@ -116,11 +116,7 @@ const context = await esbuild.context({
 			inject: false,
 		}),
 		CopyPlugin({
-			filesToCopy: [
-				"manifest.json",
-				"versions.json",
-				"pkg/numbat_wasm_bg.wasm",
-			],
+			filesToCopy: ["manifest.json", "versions.json"],
 		}),
 		{
 			name: "place-hotreload",

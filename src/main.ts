@@ -1,18 +1,14 @@
 import {
 	App,
-	Editor,
-	MarkdownView,
-	Notice,
 	Plugin,
 	PluginSettingTab,
 	Setting,
 	MarkdownPostProcessorContext,
-	requestUrl,
 } from "obsidian";
 
 import "./index.css";
 import "./rechner.css";
-import { InterpreterOutput, REPLContext, CodeCell } from "./kernel";
+import { REPLContext, CodeCell } from "./kernel";
 import { NumbatKernel } from "./numbat";
 import { NumbatSuggester } from "./NumbatSuggester";
 import { DEFAULT_SETTINGS, RechnerPluginSettings } from "./settings";
@@ -59,7 +55,7 @@ class RechnerPluginSettingsTab extends PluginSettingTab {
 function renderError(error: string): Element {
 	const pre = document.createElement("div");
 	pre.classList.add(...["rechner-output-cell", "rechner-cell-error"]);
-	const errorspan = pre.createEl("span");
+	const errorspan = pre.createEl("span", { text: "" });
 	errorspan.innerHTML = error;
 	return pre;
 }
@@ -89,9 +85,9 @@ function renderCodeCells(element: Element, evals: Array<CodeCell>): void {
 		// });
 
 		if (codeCell.outputs?.isError) {
+			codeCellContainer.addClass("rechner-cell-error-container");
 			const errEl = renderError(codeCell.outputs.output);
 			codeCellContainer.appendChild(errEl);
-			codeCellContainer.addClass("rechner-cell-error-border");
 		} else {
 			if (codeCell.outputs?.output) {
 				codeCellContainer.addClass("rechner-cell-eval-ok-border");
@@ -129,14 +125,7 @@ export default class RechnerPlugin extends Plugin {
 		ctx: MarkdownPostProcessorContext,
 	) {
 		try {
-			container.addClasses([
-				"rechner-code-block",
-				"border",
-				"border-gray-100",
-				"rounded-sm",
-				"px-3",
-				"py-2",
-			]);
+			container.addClasses(["rechner-code-block"]);
 
 			const blockREPL = this.blankREPL.clone();
 			const rawCodeCells = source.split("\n\n");
@@ -158,7 +147,7 @@ export default class RechnerPlugin extends Plugin {
 		} catch (error) {
 			console.error(error);
 			if (error instanceof Error) {
-				el.createEl("div", { text: error.message });
+				container.createEl("div", { text: error.message });
 			}
 		}
 	}
