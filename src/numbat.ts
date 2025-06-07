@@ -1,9 +1,5 @@
 // import { requestUrl } from "obsidian";
-import init, {
-	Numbat,
-	setup_panic_hook,
-	FormatType,
-} from "@numbat-kernel/numbat_kernel";
+import init, { Numbat, setup_panic_hook } from "@numbat-kernel/numbat_kernel";
 import { RechnerPluginSettings } from "./settings";
 
 import "./numbat.css";
@@ -43,7 +39,7 @@ class NumbatKernel implements Kernel {
 	}
 
 	new(): NumbatREPLContext {
-		const numbat = Numbat.new(true, false, FormatType.Html);
+		const numbat = Numbat.new(true, false);
 		return new NumbatREPLContext(numbat);
 	}
 }

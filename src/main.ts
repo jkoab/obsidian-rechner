@@ -8,10 +8,11 @@ import {
 
 import "./index.css";
 import "./rechner.css";
-import { REPLContext, CodeCell } from "./kernel";
+import { REPLContext } from "./kernel";
 import { NumbatKernel } from "./numbat";
 import { NumbatSuggester } from "./NumbatSuggester";
 import { DEFAULT_SETTINGS, RechnerPluginSettings } from "./settings";
+import { FILE_VIEW_TYPE, NumbatFileView } from "./numbatviewer";
 
 class RechnerPluginSettingsTab extends PluginSettingTab {
 	plugin: RechnerPlugin;
@@ -52,70 +53,6 @@ class RechnerPluginSettingsTab extends PluginSettingTab {
 	}
 }
 
-function renderError(error: string): Element {
-	const pre = document.createElement("div");
-	pre.classList.add(...["rechner-output-cell", "rechner-cell-error"]);
-	const errorspan = pre.createEl("span", { text: "" });
-	errorspan.innerHTML = error;
-	return pre;
-}
-
-function renderCodeCells(element: Element, evals: Array<CodeCell>): void {
-	for (const [idx, codeCell] of evals.entries()) {
-		const codeCellContainer = element.createEl(
-			"div",
-			{
-				cls: ["rechner-cell"],
-			},
-			(container) => {
-				container.id = `code-cell-${idx}`;
-			},
-		);
-
-		const codeCellCodeNode = codeCellContainer.createEl("div", {
-			cls: ["rechner-cell-code"],
-		});
-		codeCellCodeNode.createEl("span", {
-			text: codeCell.code,
-			cls: [""],
-		});
-		// flex spacer
-		// codeCellContainer.createEl("div", {
-		// 	cls: ["flex-shrink", "border"],
-		// });
-
-		if (codeCell.outputs?.isError) {
-			codeCellContainer.addClass("rechner-cell-error-container");
-			const errEl = renderError(codeCell.outputs.output);
-			codeCellContainer.appendChild(errEl);
-		} else {
-			if (codeCell.outputs?.output) {
-				codeCellContainer.addClass("rechner-cell-eval-ok-border");
-				const evalEl = codeCellContainer.createEl("div", {
-					cls: ["rechner-output-cell"],
-				});
-				const evalLine = evalEl.createEl("div", {
-					// cls: ["justify-normal"],
-				});
-				evalLine.innerHTML = codeCell.outputs.output.trim() as string;
-			}
-		}
-	}
-}
-
-// function instrument(spanName: string, fun: () => void) {
-// 	const start = performance.now();
-// 	fun();
-// 	const end = performance.now();
-// 	const timing = end - start;
-// 	const logmessage = `${spanName}: ${timing} ms`;
-// 	if (timing > 30) {
-// 		console.warn(logmessage);
-// 	} else {
-// 		console.log(logmessage);
-// 	}
-// }
-
 export default class RechnerPlugin extends Plugin {
 	private blankREPL: REPLContext;
 
@@ -129,21 +66,46 @@ export default class RechnerPlugin extends Plugin {
 
 			const blockREPL = this.blankREPL.clone();
 			const rawCodeCells = source.split("\n\n");
-			const evaluatedCodeCells: Array<CodeCell> = rawCodeCells.map(
-				(codecell) => {
-					if (codecell.trim() !== "") {
-						return {
-							code: codecell,
-							outputs: blockREPL?.interpret(codecell),
-						};
-					} else {
-						return {
-							code: codecell,
-						};
-					}
-				},
-			);
-			renderCodeCells(container, evaluatedCodeCells);
+			// const evaluatedCodeCells: Array<CodeCell> = rawCodeCells.map(
+			// 	(codecell) => {
+			// 		if (codecell.trim() !== "") {
+			// 			return {
+			// 				code: codecell,
+			// 				outputs: blockREPL?.interpret(codecell),
+			// 			};
+			// 		} else {
+			// 			return {
+			// 				code: codecell,
+			// 			};
+			// 		}
+			// 	},
+			// );
+			for (const [idx, codecell] of rawCodeCells.entries()) {
+				const codeCellContainer = container.createEl(
+					"div",
+					{
+						cls: ["rechner-cell"],
+					},
+					(container) => {
+						container.id = `code-cell-${idx}`;
+					},
+				);
+				const codeCellCodeNode = codeCellContainer.createEl("div", {
+					cls: ["rechner-cell-code"],
+				});
+				codeCellCodeNode.createEl("span", {
+					text: codecell,
+					cls: [""],
+				});
+				const evalEl = codeCellContainer.createEl("div", {
+					cls: ["rechner-output-cell"],
+				});
+
+				blockREPL.interpretToNode(evalEl, codecell);
+				if (!evalEl.textContent?.trim()) {
+					evalEl.remove();
+				}
+			}
 		} catch (error) {
 			console.error(error);
 			if (error instanceof Error) {
@@ -176,6 +138,9 @@ export default class RechnerPlugin extends Plugin {
 			);
 			this.registerEditorSuggest(numbatSuggester);
 		}
+
+		this.registerView(FILE_VIEW_TYPE, (leaf) => new NumbatFileView(leaf));
+		this.registerExtensions(["nbt"], FILE_VIEW_TYPE);
 	}
 
 	async loadSettings() {
