@@ -22,11 +22,8 @@ class NumbatREPLContext implements REPLContext {
 	constructor(ctx: Numbat) {
 		this.ctx = ctx;
 	}
-	interpret(code: string): InterpreterOutput {
-		return this.ctx.interpret(code);
-	}
 
-	interpretToNode(node: Node, code: string) {
+	interpretToNode(node: Element, code: string) {
 		this.ctx.interpretToNode(node, code);
 	}
 }

@@ -37,13 +37,16 @@ class NumbatSuggester extends EditorSuggest<TypedCompletion> {
 		return completions;
 	}
 	renderSuggestion(value: TypedCompletion, el: HTMLElement): void {
-		const suggestion = el.createDiv({ cls: "flex" });
+		const suggestion = el.createDiv({
+			cls: "rechner-suggestions-container",
+		});
 		suggestion.createEl("div", {
 			text: value.text,
+			cls: "rechner-suggestions-name",
 		});
 		suggestion.createEl("div", {
 			text: value.ctype,
-			cls: ["rechner-suggestions-type", "pl-2"],
+			cls: "rechner-suggestions-type",
 		});
 	}
 	selectSuggestion(

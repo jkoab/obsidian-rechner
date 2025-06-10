@@ -38,14 +38,14 @@
 	background-color: var(--rechner-background-secondary);
 }
 .rechner-cell-code {
-	@apply flex flex-1;
+	@apply flex flex-1 grow;
 	@apply p-2;
 	@apply whitespace-pre;
 	/* @apply bg-pink-100; */
 	background-color: var(--code-background);
 }
 .rechner-output-cell {
-	@apply flex  flex-1 items-end;
+	@apply flex flex-col flex-1 shrink;
 	@apply p-2;
 	white-space: pre;
 	background-color: var(--rechner-background-primary-ok);
@@ -53,6 +53,12 @@
 	color: var(--code-normal);
 	/* @apply whitespace-pre; */
 	/* @apply bg-green-100; */
+}
+.rechner-output-spacer {
+	@apply grow;
+}
+
+.numbat-result {
 }
 .rechner-cell-eval-ok-border {
 	/* @apply border border-green-700; */

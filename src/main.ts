@@ -4,6 +4,8 @@ import {
 	PluginSettingTab,
 	Setting,
 	MarkdownPostProcessorContext,
+	Editor,
+	MarkdownView,
 } from "obsidian";
 
 import "./index.css";
@@ -100,11 +102,14 @@ export default class RechnerPlugin extends Plugin {
 				const evalEl = codeCellContainer.createEl("div", {
 					cls: ["rechner-output-cell"],
 				});
+				evalEl.createEl("div", { cls: ["rechner-output-spacer"] });
 
+				const blockREPL = this.blankREPL.clone();
 				blockREPL.interpretToNode(evalEl, codecell);
-				if (!evalEl.textContent?.trim()) {
-					evalEl.remove();
-				}
+				// TODO: find a better solution for this?
+				// if (!evalEl.textContent) {
+				// 	evalEl.remove();
+				// }
 			}
 		} catch (error) {
 			console.error(error);
