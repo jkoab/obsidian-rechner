@@ -4,6 +4,7 @@ mod node_formatter;
 mod utils;
 
 use codespan_reporting::term::termcolor::WriteColor;
+use node_formatter::CSSClass;
 use node_formatter::NodeFormatter;
 
 use numbat::markup::text;
@@ -97,8 +98,8 @@ impl InterpreterOutput {
 }
 #[derive(Debug, Clone, Error)]
 pub enum KernelError {
-    #[error("DOMError:")]
-    DOMError(),
+    #[error("DOMError: {0}")]
+    DOMError(String),
 }
 
 impl ErrorDiagnostic for KernelError {
@@ -130,7 +131,7 @@ impl Numbat {
     pub fn clone(&self) -> Numbat {
         Numbat {
             ctx: self.ctx.clone(),
-            enable_pretty_printing: self.enable_pretty_printing,
+            enable_pretty_printing: self.enable_pretty_printing.clone(),
         }
     }
 
@@ -149,19 +150,13 @@ impl Numbat {
     }
     #[wasm_bindgen(js_name = "interpretToNode")]
     pub fn interpret_to_node(&mut self, node: &Element, code: &str) -> InterpreterDetails {
-        let document = match window() {
-            Some(win) => match win.document() {
-                Some(doc) => doc,
-                None => {
-                    return self
-                        .print_diagnostic(&KernelError::DOMError(), node.to_owned())
-                        .into();
-                }
-            },
+        let document = match window().and_then(|f| f.document()) {
+            Some(doc) => doc,
             None => {
-                return self
-                    .print_diagnostic(&KernelError::DOMError(), node.to_owned())
-                    .into();
+                return self.print_diagnostic(
+                    &KernelError::DOMError("document not found".to_string()),
+                    node.to_owned(),
+                );
             }
         };
 
@@ -202,33 +197,21 @@ impl Numbat {
                 if (!result_markup.0.is_empty()) {
                     let result_elem = document.create_element("div").unwrap();
                     result_elem.set_class_name("numbat-result");
-                    for fmt_str in result_markup.0 {
-                        let text = fmt_str.2.clone();
-                        let markup_node = document.create_element("span").unwrap();
-                        markup_node.set_text_content(Some(text.as_ref()));
-                        markup_node
-                            .set_class_name(&fmt_str.1.cssclass().unwrap_or_default().as_str());
-                        result_elem.append_child(&markup_node).unwrap();
-                    }
-                    fragment.append_child(&result_elem);
+                    let fmt = NodeFormatter::new(result_elem);
+                    fmt.format(&result_markup, false);
+                    fragment.append_child(&fmt.node);
                 }
 
                 node.append_child(&fragment);
-                InterpreterOutput {
-                    output: "test".to_owned(),
-                    is_error: false,
-                }
-                .into()
+                InterpreterDetails { is_error: false }
             }
-            Err(NumbatError::ResolverError(e)) => self.print_diagnostic(&e, node.to_owned()).into(),
+            Err(NumbatError::ResolverError(e)) => self.print_diagnostic(&e, node.to_owned()),
             Err(NumbatError::NameResolutionError(
                 e @ (NameResolutionError::IdentifierClash { .. }
                 | NameResolutionError::ReservedIdentifier(_)),
-            )) => self.print_diagnostic(&e, node.to_owned()).into(),
-            Err(NumbatError::TypeCheckError(e)) => {
-                self.print_diagnostic(&e, node.to_owned()).into()
-            }
-            Err(NumbatError::RuntimeError(e)) => self.print_diagnostic(&e, node.to_owned()).into(),
+            )) => self.print_diagnostic(&e, node.to_owned()),
+            Err(NumbatError::TypeCheckError(e)) => self.print_diagnostic(&e, node.to_owned()),
+            Err(NumbatError::RuntimeError(e)) => self.print_diagnostic(&e, node.to_owned()),
         }
     }
 
@@ -342,10 +325,21 @@ impl Numbat {
         completions
     }
 
-    fn print_diagnostic(&self, error: &dyn ErrorDiagnostic, node: Element) -> InterpreterOutput {
+    fn print_diagnostic(&self, error: &dyn ErrorDiagnostic, node: Element) -> InterpreterDetails {
+        let document = match window().and_then(|f| f.document()) {
+            Some(doc) => Some(doc),
+            None => {
+                console::error_1(&"node formattter: no document".to_string().into());
+                None
+            }
+        }
+        .unwrap();
         use codespan_reporting::term::{self, Config};
-
-        let mut writer: Box<dyn WriteColor> = Box::new(NodeFormatter::new(node));
+        let error_elem = document.create_element("div").unwrap();
+        error_elem.set_class_name("rechner-cell-error");
+        let fmt = NodeFormatter::new(error_elem);
+        node.append_child(&fmt.node);
+        let mut writer: Box<dyn WriteColor> = Box::new(fmt);
         let config = Config::default();
 
         let resolver = self.ctx.resolver();
@@ -354,9 +348,6 @@ impl Numbat {
             term::emit(&mut writer, &config, &resolver.files, &diagnostic).unwrap();
         }
 
-        InterpreterOutput {
-            output: "print_diagnostic".to_string(),
-            is_error: true,
-        }
+        InterpreterDetails { is_error: true }
     }
 }

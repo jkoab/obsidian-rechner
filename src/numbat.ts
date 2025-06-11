@@ -1,9 +1,8 @@
 // import { requestUrl } from "obsidian";
-import init, { Numbat, setup_panic_hook } from "@numbat-kernel/numbat_kernel";
+import { Numbat } from "@numbat-kernel/numbat_kernel";
 import { RechnerPluginSettings } from "./settings";
 
 import "./numbat.css";
-import { InterpreterOutput, Kernel, REPLContext } from "./kernel";
 
 // async function getExchangeRates() {
 // 	const response = await requestUrl(
@@ -11,34 +10,33 @@ import { InterpreterOutput, Kernel, REPLContext } from "./kernel";
 // 	).text;
 // 	return response;
 // }
-
-class NumbatREPLContext implements REPLContext {
+//
+class NumbatRepl {
 	ctx: Numbat;
+	constructor() {
+		this.ctx = Numbat.new(true, false);
+	}
 
 	clone() {
-		return new NumbatREPLContext(this.ctx.clone());
-	}
-
-	constructor(ctx: Numbat) {
-		this.ctx = ctx;
-	}
-
-	interpretToNode(node: Element, code: string) {
-		this.ctx.interpretToNode(node, code);
+		const cloned = new NumbatRepl();
+		cloned.ctx = this.ctx.clone();
+		return cloned;
 	}
 }
 
-class NumbatKernel implements Kernel {
+class NumbatKernel {
+	isInitialized = false;
+	defaultCtx?: NumbatRepl;
+
 	constructor(settings: RechnerPluginSettings) {}
-	async init() {
-		await init();
-		setup_panic_hook();
-	}
+	async init() {}
 
-	new(): NumbatREPLContext {
-		const numbat = Numbat.new(true, false);
-		return new NumbatREPLContext(numbat);
+	async fromDefault(): Promise<NumbatRepl> {
+		if (this.defaultCtx === undefined) {
+			this.defaultCtx = new NumbatRepl();
+		}
+		return this.defaultCtx.clone();
 	}
 }
 
-export { NumbatKernel };
+export { NumbatKernel, NumbatRepl };

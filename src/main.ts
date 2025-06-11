@@ -10,11 +10,12 @@ import {
 
 import "./index.css";
 import "./rechner.css";
-import { REPLContext } from "./kernel";
+// import { REPLContext } from "./kernel";
 import { NumbatKernel } from "./numbat";
 import { NumbatSuggester } from "./NumbatSuggester";
 import { DEFAULT_SETTINGS, RechnerPluginSettings } from "./settings";
 import { FILE_VIEW_TYPE, NumbatFileView } from "./numbatviewer";
+import init, { setup_panic_hook } from "@numbat-kernel/numbat_kernel";
 
 class RechnerPluginSettingsTab extends PluginSettingTab {
 	plugin: RechnerPlugin;
@@ -56,7 +57,7 @@ class RechnerPluginSettingsTab extends PluginSettingTab {
 }
 
 export default class RechnerPlugin extends Plugin {
-	private blankREPL: REPLContext;
+	numbatKernel?: NumbatKernel;
 
 	async blockHandler(
 		source: string,
@@ -64,24 +65,17 @@ export default class RechnerPlugin extends Plugin {
 		ctx: MarkdownPostProcessorContext,
 	) {
 		try {
+			const rawCodeCells = source.split("\n\n");
+
 			container.addClasses(["rechner-code-block"]);
 
-			const blockREPL = this.blankREPL.clone();
-			const rawCodeCells = source.split("\n\n");
-			// const evaluatedCodeCells: Array<CodeCell> = rawCodeCells.map(
-			// 	(codecell) => {
-			// 		if (codecell.trim() !== "") {
-			// 			return {
-			// 				code: codecell,
-			// 				outputs: blockREPL?.interpret(codecell),
-			// 			};
-			// 		} else {
-			// 			return {
-			// 				code: codecell,
-			// 			};
-			// 		}
-			// 	},
-			// );
+			const createReplStart = performance.mark("create-repl-start");
+			const blockctx = await this.numbatKernel?.fromDefault();
+			const createReplStop = performance.mark("create-repl-stop");
+			performance.measure("create-repl", {
+				start: createReplStart.startTime,
+				end: performance.now(),
+			});
 			for (const [idx, codecell] of rawCodeCells.entries()) {
 				const codeCellContainer = container.createEl(
 					"div",
@@ -104,13 +98,39 @@ export default class RechnerPlugin extends Plugin {
 				});
 				evalEl.createEl("div", { cls: ["rechner-output-spacer"] });
 
-				const blockREPL = this.blankREPL.clone();
-				blockREPL.interpretToNode(evalEl, codecell);
+				const replstart = performance.mark("interpret-repl-start");
+				const resultDetails = blockctx?.ctx.interpretToNode(
+					evalEl,
+					codecell,
+				);
+				performance.measure("interpret-node", {
+					start: replstart.startTime,
+					end: performance.now(),
+				});
+
+				if (resultDetails?.isError) {
+					evalEl.addClass("rechner-cell-error");
+					codeCellContainer.addClass("rechner-cell-error-container");
+				}
+				resultDetails?.free();
+
 				// TODO: find a better solution for this?
 				// if (!evalEl.textContent) {
 				// 	evalEl.remove();
 				// }
 			}
+
+			performance.measure("block", {
+				start: createReplStop.startTime,
+				end: performance.now(),
+			});
+			const entries = performance.getEntriesByType("measure");
+
+			for (const entry of entries) {
+				// console.table(entry.toJSON());
+			}
+			performance.clearMarks();
+			performance.clearMeasures();
 		} catch (error) {
 			console.error(error);
 			if (error instanceof Error) {
@@ -124,9 +144,9 @@ export default class RechnerPlugin extends Plugin {
 		const settings = await this.loadSettings();
 		this.addSettingTab(new RechnerPluginSettingsTab(this.app, this));
 
-		const numbatKernel: NumbatKernel = new NumbatKernel(settings);
-		await numbatKernel.init();
-		this.blankREPL = numbatKernel.new();
+		await init();
+		setup_panic_hook();
+		this.numbatKernel = new NumbatKernel(settings);
 
 		for (const codeblockname of ["numbat", "nbt"]) {
 			this.registerMarkdownCodeBlockProcessor(
@@ -136,16 +156,29 @@ export default class RechnerPlugin extends Plugin {
 			);
 		}
 		if (settings.autoSuggest) {
-			const numbatSuggester = new NumbatSuggester(
-				this.app,
-				this.settings,
-				numbatKernel.new().ctx,
-			);
-			this.registerEditorSuggest(numbatSuggester);
+			// const numbatSuggester = new NumbatSuggester(
+			// 	this.app,
+			// 	this.settings,
+			// 	await (
+			// 		await this.numbatKernel.fromDefault()
+			// 	).ctx,
+			// );
+			// this.registerEditorSuggest(numbatSuggester);
 		}
 
 		this.registerView(FILE_VIEW_TYPE, (leaf) => new NumbatFileView(leaf));
 		this.registerExtensions(["nbt"], FILE_VIEW_TYPE);
+		this.addCommand({
+			id: "add-numbat-code",
+			name: "Add numbat code",
+			editorCallback: (editor: Editor, view: MarkdownView) => {
+				const cursor = editor.getCursor();
+				editor.replaceRange("```nbt\n```", cursor);
+				editor.setCursor(cursor.line, cursor.ch + 6);
+			},
+		});
+
+		// this.registerEditorExtension([examplePlugin]);
 	}
 
 	async loadSettings() {

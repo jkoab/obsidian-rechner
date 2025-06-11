@@ -11,10 +11,15 @@
 .numbat-diagnostic-red {
 	color: var(--text-error);
 }
-
+.numbat-string {
+	color: var(--code-string);
+}
 .numbat-value {
-	/* @apply text-blue-800; */
 	color: var(--code-value);
+}
+
+.numbat-keyword {
+	color: var(--code-keyword);
 }
 .numbat-unit {
 	color: var(--code-keyword);
@@ -24,7 +29,7 @@
 }
 
 .numbat-type-identifier {
-	color: var(--code-keyword);
+	color: var(--code-tag);
 }
 
 .numbat-diagnostic-bold {

@@ -79,3 +79,13 @@
 .rechner-suggestions-type {
 	color: var(--code-comment);
 }
+
+.rechner-suggestions-container {
+	@apply flex;
+}
+.rechner-suggestions-name {
+}
+.rechner-suggestions-type {
+	@apply pl-2;
+	font-size: var(--font-smallest);
+}
