@@ -23,7 +23,9 @@ jobs:
 
             - name: build wasm
               run: |
-                  cd kernels/numbat-kernel && sh build.sh
+                  cd kernels/numbat-kernel && wasm-pack build --target=web --release
+              env:
+                  RUSTFLAGS: '--cfg getrandom_backend="wasm_js"'
 
             - name: Build plugin
               run: |
