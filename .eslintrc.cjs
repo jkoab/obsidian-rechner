@@ -5,12 +5,13 @@ module.exports = {
 		browser: true,
 		node: false,
 	},
-	plugins: ["@typescript-eslint", "obsidianmd"],
+	plugins: ["@typescript-eslint", "promise", "obsidianmd"],
 	extends: [
 		"plugin:obsidianmd/recommended",
 		"eslint:recommended",
 		"plugin:@typescript-eslint/eslint-recommended",
 		"plugin:@typescript-eslint/recommended",
+		"plugin:promise/recommended",
 	],
 	parserOptions: {
 		project: "./tsconfig.json",

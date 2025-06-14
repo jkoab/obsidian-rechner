@@ -2,7 +2,7 @@ import builtinModules from "builtin-modules";
 import * as fs from "fs";
 import * as path from "path";
 import { defineConfig, Plugin, UserConfig } from "vite";
-import wasmPack from "vite-plugin-wasm-pack";
+import wasm from "vite-plugin-wasm";
 
 const prod = process.env.NODE_ENV === "production";
 /**
@@ -51,7 +51,7 @@ export default defineConfig(async ({ mode }) => {
 
 	return {
 		plugins: [
-			wasmPack(["./kernels/numbat-kernel/"]),
+			wasm(),
 			hotReloadFilePlugin(),
 			includeJSON({
 				files: ["versions.json", "manifest.json"],

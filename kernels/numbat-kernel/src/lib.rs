@@ -3,31 +3,25 @@
 mod node_formatter;
 mod utils;
 
-use codespan_reporting::term::termcolor::WriteColor;
-use node_formatter::CSSClass;
 use node_formatter::NodeFormatter;
 
-use numbat::markup::text;
-use numbat::markup::FormatType;
-use numbat::markup::FormattedString;
 use std::fmt::Debug;
-use std::fmt::Display;
 use std::sync::{Arc, Mutex};
 use wasm_bindgen::prelude::*;
-use web_sys::Element;
 
-use numbat::buffered_writer::BufferedWriter;
 use numbat::diagnostic::Diagnostic;
 use numbat::diagnostic::ErrorDiagnostic;
 use numbat::help::help_markup;
-use numbat::html_formatter::{HtmlFormatter, HtmlWriter};
+use numbat::html_formatter::HtmlFormatter;
 use numbat::markup::Formatter;
 use numbat::module_importer::BuiltinModuleImporter;
 use numbat::resolver::CodeSource;
 use numbat::{markup as m, NameResolutionError, NumbatError};
 use numbat::{Context, InterpreterSettings};
 use thiserror::Error;
-use web_sys::{console, window, DocumentFragment, Node};
+use web_sys::{console, window, Document, DocumentFragment};
+
+use crate::node_formatter::DOMOutput;
 
 #[wasm_bindgen]
 pub fn setup_panic_hook() {
@@ -76,17 +70,10 @@ pub struct InterpreterOutput {
 }
 
 #[wasm_bindgen]
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct InterpreterDetails {
     #[wasm_bindgen(js_name = "isError")]
     pub is_error: bool,
-}
-impl From<InterpreterOutput> for InterpreterDetails {
-    fn from(details: InterpreterOutput) -> Self {
-        InterpreterDetails {
-            is_error: details.is_error,
-        }
-    }
 }
 
 #[wasm_bindgen]
@@ -148,17 +135,12 @@ impl Numbat {
         let fmt: Box<dyn Formatter> = Box::new(HtmlFormatter {});
         fmt.format(markup, indent).to_string()
     }
+
     #[wasm_bindgen(js_name = "interpretToNode")]
-    pub fn interpret_to_node(&mut self, node: &Element, code: &str) -> InterpreterDetails {
-        let document = match window().and_then(|f| f.document()) {
-            Some(doc) => doc,
-            None => {
-                return self.print_diagnostic(
-                    &KernelError::DOMError("document not found".to_string()),
-                    node.to_owned(),
-                );
-            }
-        };
+    pub fn interpret_to_node(&mut self, code: &str) -> DocumentFragment {
+        let document: Document = window()
+            .and_then(|f| f.document())
+            .expect("no document found");
 
         let to_be_printed: Arc<Mutex<Vec<m::Markup>>> = Arc::new(Mutex::new(vec![]));
         let to_be_printed_c = to_be_printed.clone();
@@ -174,7 +156,8 @@ impl Numbat {
             .map_err(|b| *b)
         {
             Ok((statements, result)) => {
-                let fragment: DocumentFragment = document.create_document_fragment();
+                let container = document.create_document_fragment();
+
                 let to_be_printed = to_be_printed.lock().unwrap();
                 if !to_be_printed.is_empty() {
                     let print_statements = document.create_element("div").unwrap();
@@ -183,9 +166,9 @@ impl Numbat {
                         let printed = document.create_element("div").unwrap();
                         let fmt = NodeFormatter::new(printed);
                         fmt.format(content, false);
-                        print_statements.append_child(&fmt.node);
+                        print_statements.append_child(&fmt.node).unwrap();
                     }
-                    fragment.append_child(&print_statements);
+                    container.append_child(&print_statements).unwrap();
                 }
 
                 let result_markup = result.to_markup(
@@ -194,77 +177,25 @@ impl Numbat {
                     true,
                     true,
                 );
-                if (!result_markup.0.is_empty()) {
+                if !result_markup.0.is_empty() {
                     let result_elem = document.create_element("div").unwrap();
                     result_elem.set_class_name("numbat-result");
                     let fmt = NodeFormatter::new(result_elem);
                     fmt.format(&result_markup, false);
-                    fragment.append_child(&fmt.node);
+                    container.append_child(&fmt.node).unwrap();
                 }
 
-                node.append_child(&fragment);
-                InterpreterDetails { is_error: false }
+                container
             }
-            Err(NumbatError::ResolverError(e)) => self.print_diagnostic(&e, node.to_owned()),
+            Err(NumbatError::ResolverError(e)) => self.print_diagnostic(&e),
             Err(NumbatError::NameResolutionError(
                 e @ (NameResolutionError::IdentifierClash { .. }
                 | NameResolutionError::ReservedIdentifier(_)),
-            )) => self.print_diagnostic(&e, node.to_owned()),
-            Err(NumbatError::TypeCheckError(e)) => self.print_diagnostic(&e, node.to_owned()),
-            Err(NumbatError::RuntimeError(e)) => self.print_diagnostic(&e, node.to_owned()),
+            )) => self.print_diagnostic(&e),
+            Err(NumbatError::TypeCheckError(e)) => self.print_diagnostic(&e),
+            Err(NumbatError::RuntimeError(e)) => self.print_diagnostic(&e),
         }
     }
-
-    // pub fn interpret(&mut self, code: &str) -> InterpreterOutput {
-    //     let mut output = String::new();
-
-    //     let to_be_printed: Arc<Mutex<Vec<m::Markup>>> = Arc::new(Mutex::new(vec![]));
-    //     let to_be_printed_c = to_be_printed.clone();
-    //     let mut settings = InterpreterSettings {
-    //         print_fn: Box::new(move |s: &m::Markup| {
-    //             to_be_printed_c.lock().unwrap().push(s.clone());
-    //         }),
-    //     };
-
-    //     let nl = &self.format(&numbat::markup::nl(), false);
-
-    //     let enable_indentation = false;
-
-    //     match self
-    //         .ctx
-    //         .interpret_with_settings(&mut settings, code, CodeSource::Text)
-    //         .map_err(|b| *b)
-    //     {
-    //         Ok((statements, result)) => {
-    //             // print(…) and type(…) results
-    //             let to_be_printed = to_be_printed.lock().unwrap();
-    //             for content in to_be_printed.iter() {
-    //                 output.push_str(&self.format(content, enable_indentation));
-    //                 output.push_str(nl);
-    //             }
-
-    //             let result_markup = result.to_markup(
-    //                 statements.last(),
-    //                 &self.ctx.dimension_registry().clone(),
-    //                 true,
-    //                 true,
-    //             );
-    //             output.push_str(&self.format(&result_markup, enable_indentation));
-
-    //             InterpreterOutput {
-    //                 output,
-    //                 is_error: false,
-    //             }
-    //         }
-    //         Err(NumbatError::ResolverError(e)) => self.print_diagnostic(&e),
-    //         Err(NumbatError::NameResolutionError(
-    //             e @ (NameResolutionError::IdentifierClash { .. }
-    //             | NameResolutionError::ReservedIdentifier(_)),
-    //         )) => self.print_diagnostic(&e),
-    //         Err(NumbatError::TypeCheckError(e)) => self.print_diagnostic(&e),
-    //         Err(NumbatError::RuntimeError(e)) => self.print_diagnostic(&e),
-    //     }
-    // }
 
     pub fn print_environment(&self) -> JsValue {
         self.format(&self.ctx.print_environment(), false).into()
@@ -290,10 +221,10 @@ impl Numbat {
         self.format(&help_markup(), true).into()
     }
 
-    // pub fn print_info(&mut self, keyword: &str) -> JsValue {
-    //     let output = self.ctx.print_info_for_keyword(keyword);
-    //     self.format(&output, true).into()
-    // }
+    pub fn print_info(&mut self, keyword: &str) -> JsValue {
+        let output = self.ctx.print_info_for_keyword(keyword);
+        self.format(&output, true).into()
+    }
 
     #[wasm_bindgen(js_name = "getCompletionsFor")]
     pub fn get_completions_for(&self, input: &str) -> Vec<String> {
@@ -325,7 +256,7 @@ impl Numbat {
         completions
     }
 
-    fn print_diagnostic(&self, error: &dyn ErrorDiagnostic, node: Element) -> InterpreterDetails {
+    fn print_diagnostic(&self, error: &dyn ErrorDiagnostic) -> DocumentFragment {
         let document = match window().and_then(|f| f.document()) {
             Some(doc) => Some(doc),
             None => {
@@ -334,20 +265,24 @@ impl Numbat {
             }
         }
         .unwrap();
-        use codespan_reporting::term::{self, Config};
+        use codespan_reporting::term::{emit, Config};
+        let fragment = document.create_document_fragment();
         let error_elem = document.create_element("div").unwrap();
         error_elem.set_class_name("rechner-cell-error");
+
         let fmt = NodeFormatter::new(error_elem);
-        node.append_child(&fmt.node);
-        let mut writer: Box<dyn WriteColor> = Box::new(fmt);
+        let mut writer: Box<dyn DOMOutput> = Box::new(fmt);
         let config = Config::default();
 
         let resolver = self.ctx.resolver();
 
         for diagnostic in error.diagnostics() {
-            term::emit(&mut writer, &config, &resolver.files, &diagnostic).unwrap();
+            emit(&mut writer, &config, &resolver.files, &diagnostic).unwrap();
         }
 
-        InterpreterDetails { is_error: true }
+        fragment
+            .append_child(writer.output())
+            .expect("failed to append formatted node");
+        fragment
     }
 }

@@ -10,12 +10,10 @@ import {
 
 import "./index.css";
 import "./rechner.css";
-// import { REPLContext } from "./kernel";
 import { NumbatKernel } from "./numbat";
-import { NumbatSuggester } from "./NumbatSuggester";
 import { DEFAULT_SETTINGS, RechnerPluginSettings } from "./settings";
 import { FILE_VIEW_TYPE, NumbatFileView } from "./numbatviewer";
-import init, { setup_panic_hook } from "@numbat-kernel/numbat_kernel";
+import init, { setup_panic_hook, Numbat } from "@numbat-kernel/numbat_kernel";
 
 class RechnerPluginSettingsTab extends PluginSettingTab {
 	plugin: RechnerPlugin;
@@ -57,20 +55,21 @@ class RechnerPluginSettingsTab extends PluginSettingTab {
 }
 
 export default class RechnerPlugin extends Plugin {
-	numbatKernel?: NumbatKernel;
+	numbatKernel: NumbatKernel;
 
 	async blockHandler(
 		source: string,
 		container: HTMLElement,
 		ctx: MarkdownPostProcessorContext,
 	) {
+		let blockctx: Numbat | undefined = undefined;
 		try {
 			const rawCodeCells = source.split("\n\n");
 
 			container.addClasses(["rechner-code-block"]);
 
 			const createReplStart = performance.mark("create-repl-start");
-			const blockctx = await this.numbatKernel?.fromDefault();
+			blockctx = this.numbatKernel.fromDefault();
 			const createReplStop = performance.mark("create-repl-stop");
 			performance.measure("create-repl", {
 				start: createReplStart.startTime,
@@ -91,7 +90,6 @@ export default class RechnerPlugin extends Plugin {
 				});
 				codeCellCodeNode.createEl("span", {
 					text: codecell,
-					cls: [""],
 				});
 				const evalEl = codeCellContainer.createEl("div", {
 					cls: ["rechner-output-cell"],
@@ -99,36 +97,35 @@ export default class RechnerPlugin extends Plugin {
 				evalEl.createEl("div", { cls: ["rechner-output-spacer"] });
 
 				const replstart = performance.mark("interpret-repl-start");
-				const resultDetails = blockctx?.ctx.interpretToNode(
-					evalEl,
-					codecell,
-				);
+				const resultDetails = blockctx.interpretToNode(codecell);
+				evalEl.appendChild(resultDetails);
+
+				if (
+					evalEl.children.item(1)?.className === "rechner-cell-error"
+				) {
+					codeCellContainer.addClass("rechner-cell-error-container");
+					evalEl.addClass("rechner-cell-error");
+				}
+
 				performance.measure("interpret-node", {
 					start: replstart.startTime,
 					end: performance.now(),
 				});
 
-				if (resultDetails?.isError) {
-					evalEl.addClass("rechner-cell-error");
-					codeCellContainer.addClass("rechner-cell-error-container");
-				}
-				resultDetails?.free();
-
 				// TODO: find a better solution for this?
-				// if (!evalEl.textContent) {
-				// 	evalEl.remove();
-				// }
+				if (!evalEl.textContent) {
+					evalEl.remove();
+				}
 			}
 
 			performance.measure("block", {
 				start: createReplStop.startTime,
 				end: performance.now(),
 			});
-			const entries = performance.getEntriesByType("measure");
-
-			for (const entry of entries) {
-				// console.table(entry.toJSON());
-			}
+			// const entries = performance.getEntriesByType("measure");
+			// for (const entry of entries) {
+			// console.table(entry.toJSON());
+			// }
 			performance.clearMarks();
 			performance.clearMeasures();
 		} catch (error) {
@@ -136,6 +133,8 @@ export default class RechnerPlugin extends Plugin {
 			if (error instanceof Error) {
 				container.createEl("div", { text: error.message });
 			}
+		} finally {
+			blockctx?.free();
 		}
 	}
 
@@ -144,9 +143,10 @@ export default class RechnerPlugin extends Plugin {
 		const settings = await this.loadSettings();
 		this.addSettingTab(new RechnerPluginSettingsTab(this.app, this));
 
+		this.numbatKernel = new NumbatKernel(settings);
+
 		await init();
 		setup_panic_hook();
-		this.numbatKernel = new NumbatKernel(settings);
 
 		for (const codeblockname of ["numbat", "nbt"]) {
 			this.registerMarkdownCodeBlockProcessor(

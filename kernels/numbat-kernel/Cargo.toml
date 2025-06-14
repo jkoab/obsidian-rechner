@@ -8,16 +8,16 @@ wasm-bindgen-test = "0.3.40"
 [dependencies]
 wasm-bindgen = "0.2.90"
 web-sys = { version = "0.3.77", features = [
-	"Document",
-	"Element",
-	"Node",
-	"Window",
-	"DocumentFragment",
-	"console",
+    "Document",
+    "Element",
+    "Node",
+    "Window",
+    "DocumentFragment",
+    "console",
 ] }
 
 numbat = { version = "1.16.0", features = [
-	"html-formatter",
+    "html-formatter",
 ], default-features = false }
 getrandom = { version = "0.3", features = ["wasm_js"] }
 
@@ -26,7 +26,7 @@ getrandom = { version = "0.3", features = ["wasm_js"] }
 # all the `std::fmt` and `std::panicking` infrastructure, so isn't great for
 # code size when deploying.
 console_error_panic_hook = { version = "0.1.6", optional = true }
-codespan-reporting = "0.11.1"
+codespan-reporting = "0.12.0"
 thiserror = "2.0.12"
 
 [lib]
@@ -47,4 +47,5 @@ codegen-units = 1
 wasm-opt = ["-Oz", "--enable-nontrapping-float-to-int", "--enable-bulk-memory"]
 
 [patch.crates-io]
-numbat = { git = "https://github.com/jkoab/numbat.git", branch = "wasm-binary-size" }
+# numbat = { git = "https://github.com/jkoab/numbat.git", branch = "wasm-binary-size" }
+numbat = { git = "https://github.com/sharkdp/numbat.git", branch = "master" }

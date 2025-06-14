@@ -11,32 +11,18 @@ import "./numbat.css";
 // 	return response;
 // }
 //
-class NumbatRepl {
-	ctx: Numbat;
-	constructor() {
-		this.ctx = Numbat.new(true, false);
-	}
-
-	clone() {
-		const cloned = new NumbatRepl();
-		cloned.ctx = this.ctx.clone();
-		return cloned;
-	}
-}
 
 class NumbatKernel {
-	isInitialized = false;
-	defaultCtx?: NumbatRepl;
+	defaultCtx?: Numbat;
 
 	constructor(settings: RechnerPluginSettings) {}
-	async init() {}
 
-	async fromDefault(): Promise<NumbatRepl> {
+	fromDefault(): Numbat {
 		if (this.defaultCtx === undefined) {
-			this.defaultCtx = new NumbatRepl();
+			this.defaultCtx = Numbat.new(true, false);
 		}
 		return this.defaultCtx.clone();
 	}
 }
 
-export { NumbatKernel, NumbatRepl };
+export { NumbatKernel };
