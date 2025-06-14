@@ -18,10 +18,16 @@ jobs:
               with:
                   node-version: "18.x"
 
+            - name: Install
+              run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+            - name: build wasm
+              run: |
+                  cd kernels/numbat-kernel && sh build.sh
+
             - name: Build plugin
               run: |
                   npm install
-                  npm run wasm
                   npm run build
 
             - name: Create release
