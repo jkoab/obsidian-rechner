@@ -24,11 +24,17 @@ import {
 	DecorationSet,
 	EditorView,
 	lineNumbers,
+	ViewUpdate,
 	WidgetType,
 } from "@codemirror/view";
 import { styleTags, tags as t } from "@lezer/highlight";
 
-import { MarkdownPostProcessorContext, TextFileView, TFile } from "obsidian";
+import {
+	MarkdownPostProcessorContext,
+	TextFileView,
+	TFile,
+	WorkspaceLeaf,
+} from "obsidian";
 
 import { Numbat } from "@numbat-kernel/numbat_kernel";
 import { NumbatKernel } from "./numbat";
@@ -165,6 +171,7 @@ function evalRanges(ctx: Numbat, state: EditorState): DecorationSet {
 						block: true,
 					}),
 				);
+				result.free();
 			}
 		},
 		leave(node) {
@@ -200,19 +207,19 @@ function createNumbatEditorView(
 const FILE_VIEW_TYPE = "numbat-file-view";
 class NumbatFileView extends TextFileView {
 	editor: EditorView;
-	numbatKernel: NumbatKernel;
+	private numbatKernel: NumbatKernel;
 
-	evaluate(code: string): DocumentFragment {
-		const ctx: Numbat = this.numbatKernel.fromDefault();
-		return ctx.interpretToNode(code).output;
+	constructor(leaf: WorkspaceLeaf, numbatKernel: NumbatKernel) {
+		super(leaf);
+		this.numbatKernel = numbatKernel;
 	}
 
 	getViewType(): string {
 		return FILE_VIEW_TYPE;
 	}
+
 	async onOpen() {
 		this.contentEl.empty();
-		this.numbatKernel = new NumbatKernel();
 		const editor = this.contentEl.createEl("div", {});
 		this.editor = new EditorView({
 			parent: editor,
@@ -222,6 +229,26 @@ class NumbatFileView extends TextFileView {
 
 	canAcceptExtension(extension: string): boolean {
 		return extension === "nbt";
+	}
+
+	async dispatchEval(state: EditorState) {
+		const dispatchEvalStart = performance.mark("dispatch-start");
+
+		const ctx = this.numbatKernel.fromDefault();
+		const evals = evalRanges(ctx, state);
+		ctx.free();
+		this.editor.dispatch({
+			effects: cellChangedEffect.of(evals),
+		});
+
+		performance.measure("dispatchEval", {
+			start: dispatchEvalStart.startTime,
+			end: performance.now(),
+		});
+		const entries = performance.getEntriesByType("measure");
+		for (const entry of entries) {
+			console.table(entry.toJSON());
+		}
 	}
 	async onLoadFile(file: TFile): Promise<void> {
 		const doc = await file.vault.cachedRead(file);
@@ -241,11 +268,7 @@ class NumbatFileView extends TextFileView {
 					}),
 					EditorView.updateListener.of((update) => {
 						if (update.docChanged) {
-							const ctx = this.numbatKernel.fromDefault();
-							const evals = evalRanges(ctx, update.state);
-							update.view.dispatch({
-								effects: cellChangedEffect.of(evals),
-							});
+							this.dispatchEval(update.state);
 						}
 					}),
 					EditorView.updateListener.of((update) => {

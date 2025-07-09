@@ -169,7 +169,10 @@ export default class RechnerPlugin extends Plugin {
 			// this.registerEditorSuggest(numbatSuggester);
 		}
 
-		this.registerView(FILE_VIEW_TYPE, (leaf) => new NumbatFileView(leaf));
+		this.registerView(
+			FILE_VIEW_TYPE,
+			(leaf) => new NumbatFileView(leaf, this.numbatKernel),
+		);
 		this.registerExtensions(["nbt"], FILE_VIEW_TYPE);
 		this.addCommand({
 			id: "add-numbat-code",
