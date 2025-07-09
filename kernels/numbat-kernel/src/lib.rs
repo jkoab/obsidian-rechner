@@ -62,9 +62,10 @@ pub struct Numbat {
 }
 
 #[wasm_bindgen]
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct InterpreterOutput {
-    output: String,
+    #[wasm_bindgen(getter_with_clone)]
+    pub output: DocumentFragment,
     #[wasm_bindgen(js_name = "isError")]
     pub is_error: bool,
 }
@@ -76,13 +77,6 @@ pub struct InterpreterDetails {
     pub is_error: bool,
 }
 
-#[wasm_bindgen]
-impl InterpreterOutput {
-    #[wasm_bindgen(getter)]
-    pub fn output(&self) -> String {
-        self.output.clone()
-    }
-}
 #[derive(Debug, Clone, Error)]
 pub enum KernelError {
     #[error("DOMError: {0}")]
@@ -137,7 +131,7 @@ impl Numbat {
     }
 
     #[wasm_bindgen(js_name = "interpretToNode")]
-    pub fn interpret_to_node(&mut self, code: &str) -> DocumentFragment {
+    pub fn interpret_to_node(&mut self, code: &str) -> InterpreterOutput {
         let document: Document = window()
             .and_then(|f| f.document())
             .expect("no document found");
@@ -185,7 +179,10 @@ impl Numbat {
                     container.append_child(&fmt.node).unwrap();
                 }
 
-                container
+                InterpreterOutput {
+                    output: container,
+                    is_error: false,
+                }
             }
             Err(NumbatError::ResolverError(e)) => self.print_diagnostic(&e),
             Err(NumbatError::NameResolutionError(
@@ -256,7 +253,7 @@ impl Numbat {
         completions
     }
 
-    fn print_diagnostic(&self, error: &dyn ErrorDiagnostic) -> DocumentFragment {
+    fn print_diagnostic(&self, error: &dyn ErrorDiagnostic) -> InterpreterOutput {
         let document = match window().and_then(|f| f.document()) {
             Some(doc) => Some(doc),
             None => {
@@ -283,6 +280,9 @@ impl Numbat {
         fragment
             .append_child(writer.output())
             .expect("failed to append formatted node");
-        fragment
+        InterpreterOutput {
+            output: fragment,
+            is_error: true,
+        }
     }
 }

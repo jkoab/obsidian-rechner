@@ -12,8 +12,8 @@ import "./index.css";
 import "./rechner.css";
 import { NumbatKernel } from "./numbat";
 import { DEFAULT_SETTINGS, RechnerPluginSettings } from "./settings";
-import { FILE_VIEW_TYPE, NumbatFileView } from "./numbatviewer";
 import init, { setup_panic_hook, Numbat } from "@numbat-kernel/numbat_kernel";
+import { BlockViewer, FILE_VIEW_TYPE, NumbatFileView } from "./EditorPlugin";
 
 class RechnerPluginSettingsTab extends PluginSettingTab {
 	plugin: RechnerPlugin;
@@ -71,6 +71,7 @@ export default class RechnerPlugin extends Plugin {
 			const createReplStart = performance.mark("create-repl-start");
 			blockctx = this.numbatKernel.fromDefault();
 			const createReplStop = performance.mark("create-repl-stop");
+
 			performance.measure("create-repl", {
 				start: createReplStart.startTime,
 				end: performance.now(),
@@ -98,11 +99,9 @@ export default class RechnerPlugin extends Plugin {
 
 				const replstart = performance.mark("interpret-repl-start");
 				const resultDetails = blockctx.interpretToNode(codecell);
-				evalEl.appendChild(resultDetails);
+				evalEl.appendChild(resultDetails.output);
 
-				if (
-					evalEl.children.item(1)?.className === "rechner-cell-error"
-				) {
+				if (resultDetails.isError) {
 					codeCellContainer.addClass("rechner-cell-error-container");
 					evalEl.addClass("rechner-cell-error");
 				}
@@ -155,6 +154,10 @@ export default class RechnerPlugin extends Plugin {
 				100,
 			);
 		}
+		this.registerMarkdownCodeBlockProcessor(
+			"nbtl",
+			new BlockViewer().blockHandler.bind(this),
+		);
 		if (settings.autoSuggest) {
 			// const numbatSuggester = new NumbatSuggester(
 			// 	this.app,
@@ -172,13 +175,18 @@ export default class RechnerPlugin extends Plugin {
 			id: "add-numbat-code",
 			name: "Add numbat code",
 			editorCallback: (editor: Editor, view: MarkdownView) => {
+				const selectionText = editor.getSelection() || "";
+				const snippetPre = "```nbt\n";
+				const codeSnippet = `${snippetPre}${selectionText}\n\`\`\``;
 				const cursor = editor.getCursor();
-				editor.replaceRange("```nbt\n```", cursor);
-				editor.setCursor(cursor.line, cursor.ch + 6);
+				if (editor.somethingSelected()) {
+					editor.replaceSelection(codeSnippet);
+				} else {
+					editor.replaceRange(codeSnippet, cursor);
+				}
+				editor.setCursor(cursor.line, cursor.ch + snippetPre.length);
 			},
 		});
-
-		// this.registerEditorExtension([examplePlugin]);
 	}
 
 	async loadSettings() {

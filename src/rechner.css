@@ -17,7 +17,14 @@
 		from var(--background-modifier-error) 99 c h
 	);
 }
-
+.rechner-live-editor .cm-scroller .overwrite-cm {
+	border-style: solid;
+	border-width: var(--border-width);
+	border-color: var(--rechner-background-secondary);
+	font-family: var(--font-monospace);
+	font-size: var(--code-size);
+	color: var(--code-normal);
+}
 .rechner-code-block {
 	@apply flex flex-col overflow-visible;
 	gap: var(--size-2-2);

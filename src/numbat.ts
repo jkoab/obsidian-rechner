@@ -15,7 +15,7 @@ import "./numbat.css";
 class NumbatKernel {
 	defaultCtx?: Numbat;
 
-	constructor(settings: RechnerPluginSettings) {}
+	constructor(settings?: RechnerPluginSettings) {}
 
 	fromDefault(): Numbat {
 		if (this.defaultCtx === undefined) {

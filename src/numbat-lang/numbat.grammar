@@ -1,0 +1,73 @@
+@top Script { (Cell "\n")+ }
+
+@skip { spaces }
+
+
+Cell { (Comment "\n")*   (Statement "\n")*  }
+
+Statement[group=statement] {
+  (
+   (Base_numbers | Base_Operator | Identifier | Keyword | Assignment | Call | fn_decl_generic )+
+	// Variable_decl { Keyword Identifier  "=" Expression } |
+	// struct_decl { Keyword Identifier  "{"  "}" }
+	// Function_decl |
+	// Expression
+   )
+}
+
+commaSep<content> { "" | content ("," content)* }
+moduleSep<content> { "" | content ("::" content)* }
+
+Call { FunIdentifier StartRBrack arguments EndRBrack }
+FunIdentifier { Identifier }
+arguments { commaSep<Statement | "\n"*> }
+primary {  Base_numbers   }
+
+// Function_decl { Keyword Identifier "(" Identifier * ")" ("=" Expression ) }
+// Expression { (primary | Base_Operator  | Call   )+ }
+fn_decl_generic { StartABrack commaSep<Identifier | "\n"*> EndABrack  }
+
+
+Keyword { @specialize<Identifier, "per" | "to" |"let"|"fn"|"where"|"and"|"dimension"|"unit"|"use"|"long"|"short"|"both"|"none"|"print"|"assert"|"assert_eq"|"type"|"if"|"then"|"else"|"true"|"false">}
+
+@tokens {
+  Identifier { $[A-Za-z] $[A-z0-9]* | greek+ }
+  // identifier_s { $[\p{XID_Start}] }
+  // identifier_unicode { $[\u{a1}-\u{10ffff} }
+  Number { $[0-9] $[0-9_]* }
+  greek { $[ΑαΒβΓγΔδΕεΖζΗηΘθΙιΚκΛλΜμΝνΞξΟοΠπΡρΣσςΤτΥυΦφΧχΨψΩω]}
+
+  // boolean {  "true" | "false" }
+ // [/\b(?:[0-9]+(?:[._][0-9]+)*|
+  // 0x[0-9A-Fa-f]+|
+  // 0o[0-7]+|
+  // 0b[01]+(?:_[01]+)*|
+  // \.[0-9]+(?:[eE][-+]?[0-9]+)?|
+  // [0-9]+[eE][-+]?[0-9]+)(?![a-zA-Z_])/, 'number'],
+  Base_numbers {
+    $[0-9]+
+    | "0x" $[0-9A-Fa-f]+
+    | "0o" $[0-7]+
+    | "0b" $[01]+ ($[01]+)*
+    | "."  $[0-9]+ ($[eE]$[-+]?$[0-9]+)?
+  }
+
+
+  StartRBrack[closedBy="EndRBrack"] { "(" }
+  EndRBrack[openedBy="StartRBrack"] { ")" }
+  StartABrack[closedBy="EndABrack"] { "<" }
+  EndABrack[openedBy="StartABrack"] { ">" }
+
+
+  multiply { "*" | "×" | "·" | "⋅"}
+  divide { "/" | "÷" }
+  Base_Operator { $[+\-*/^➞→:÷×≤≥≠<>²³] }
+  spaces { $[\u0009 \u000b\u00a0]+ }
+  space { @whitespace+ }
+  String { '"' !["]* '"' }
+  Comment { "#" ![\n]* }
+  Empty_line {"\n" }
+  CellEnd { "\n\n" }
+  Assignment { "="}
+  @precedence { Keyword  Identifier    Base_Operator StartABrack}
+}
