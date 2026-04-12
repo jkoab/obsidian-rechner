@@ -7,7 +7,7 @@ import {
 	App,
 	MarkdownEditView,
 } from "obsidian";
-import { Numbat, TypedCompletion } from "@numbat-kernel/numbat_kernel";
+import { Numbat, TypedCompletion } from "numbat-kernel/numbat_kernel";
 import { RechnerPluginSettings } from "./settings";
 
 // TODO: implement suggestions

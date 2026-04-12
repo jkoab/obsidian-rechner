@@ -17,9 +17,6 @@
 		"strictNullChecks": true,
 		"useUnknownInCatchVariables": true,
 		"lib": ["DOM", "ES5", "ES6", "ES7"],
-		"paths": {
-			"@numbat-kernel/*": ["./kernels/numbat-kernel/pkg/*"],
-		},
 	},
 	"include": ["src/**/*"],
 }

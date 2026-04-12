@@ -37,7 +37,7 @@ fn test_set_exchange_rates() {
         !result.is_error,
         "Currency interpretation should not error after setting exchange rates"
     );
-    assert!(result.)
+    assert!(!result.is_error, "Currency conversion should work");
 }
 
 #[wasm_bindgen_test]

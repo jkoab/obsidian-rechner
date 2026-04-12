@@ -3,7 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { defineConfig, Plugin, UserConfig } from "vite";
 import wasm from "vite-plugin-wasm";
-
+import Inspect from "vite-plugin-inspect";
 const prod = process.env.NODE_ENV === "production";
 /**
  * Location of the test vault plugin directory
@@ -50,21 +50,18 @@ export default defineConfig(async ({ mode }) => {
 	const prod = mode === "production";
 
 	return {
+		devtools: true,
+		optimizeDeps: {
+			exclude: ["numbat-kernel"],
+		},
 		plugins: [
 			wasm(),
+			Inspect(),
 			hotReloadFilePlugin(),
 			includeJSON({
 				files: ["versions.json", "manifest.json"],
 			}),
 		],
-		resolve: {
-			alias: {
-				"@numbat-kernel": path.resolve(
-					__dirname,
-					"./kernels/numbat-kernel/pkg/",
-				),
-			},
-		},
 		build: {
 			lib: {
 				entry: resolve(__dirname, "src/main.ts"),
@@ -82,6 +79,9 @@ export default defineConfig(async ({ mode }) => {
 					main: resolve(__dirname, "src/main.ts"),
 				},
 				output: {
+					format: "cjs",
+					exports: "default",
+					inlineDynamicImports: true,
 					entryFileNames: "main.js",
 					assetFileNames: "styles.css",
 				},

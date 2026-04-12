@@ -36,7 +36,7 @@ import {
 	WorkspaceLeaf,
 } from "obsidian";
 
-import { Numbat } from "@numbat-kernel/numbat_kernel";
+import { Numbat } from "numbat-kernel/numbat_kernel";
 import { NumbatKernel } from "./numbat";
 import { parser } from "./numbat-lang/NumbatParser";
 

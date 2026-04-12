@@ -13,7 +13,7 @@ import "./index.css";
 import "./rechner.css";
 import { NumbatKernel } from "./numbat";
 import { DEFAULT_SETTINGS, RechnerPluginSettings } from "./settings";
-import init, { setup_panic_hook, Numbat } from "@numbat-kernel/numbat_kernel";
+import init, { setup_panic_hook, Numbat } from "numbat-kernel/numbat_kernel";
 import { BlockViewer, FILE_VIEW_TYPE, NumbatFileView } from "./EditorPlugin";
 import { ExchangeRateSource } from "./exchange-rates";
 
