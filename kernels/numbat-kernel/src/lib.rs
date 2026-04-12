@@ -4,6 +4,8 @@ mod node_formatter;
 mod utils;
 
 use node_formatter::NodeFormatter;
+use numbat::pretty_print::PrettyPrint;
+use numbat::value::Value;
 
 use std::fmt::Debug;
 use std::sync::{Arc, Mutex};
@@ -16,7 +18,7 @@ use numbat::html_formatter::HtmlFormatter;
 use numbat::markup::Formatter;
 use numbat::module_importer::BuiltinModuleImporter;
 use numbat::resolver::CodeSource;
-use numbat::{markup as m, NameResolutionError, NumbatError};
+use numbat::{markup as m, InterpreterResult, NameResolutionError, NumbatError};
 use numbat::{Context, InterpreterSettings};
 use thiserror::Error;
 use web_sys::{console, window, Document, DocumentFragment};
@@ -116,14 +118,14 @@ impl Numbat {
         }
     }
 
-    // #[wasm_bindgen(js_name = "setExchangeRates")]
-    // pub fn set_exchange_rates(&mut self, xml_content: &str) {
-    //     Context::set_exchange_rates(xml_content);
-    //     let _ = self
-    //         .ctx
-    //         .interpret("use units::currencies", CodeSource::Internal)
-    //         .unwrap();
-    // }
+    #[wasm_bindgen(js_name = "setExchangeRates")]
+    pub fn set_exchange_rates(&mut self, xml_content: &str) {
+        Context::set_exchange_rates(xml_content);
+        let _ = self
+            .ctx
+            .interpret("use units::currencies", CodeSource::Internal)
+            .unwrap();
+    }
 
     fn format(&self, markup: &numbat::markup::Markup, indent: bool) -> String {
         let fmt: Box<dyn Formatter> = Box::new(HtmlFormatter {});
@@ -143,12 +145,11 @@ impl Numbat {
                 to_be_printed_c.lock().unwrap().push(s.clone());
             }),
         };
+        let interpretation_result =
+            self.ctx
+                .interpret_with_settings(&mut settings, code, CodeSource::Text);
 
-        match self
-            .ctx
-            .interpret_with_settings(&mut settings, code, CodeSource::Text)
-            .map_err(|b| *b)
-        {
+        match interpretation_result.map_err(|b| *b) {
             Ok((statements, result)) => {
                 let container = document.create_document_fragment();
 
@@ -165,19 +166,42 @@ impl Numbat {
                     container.append_child(&print_statements).unwrap();
                 }
 
-                let result_markup = result.to_markup(
-                    statements.last(),
-                    &self.ctx.dimension_registry().clone(),
-                    true,
-                    true,
-                );
-                if !result_markup.0.is_empty() {
+                // let result_markup = result.to_markup(
+                //     statements.last(),
+                //     &self.ctx.dimension_registry().clone(),
+                //     true,
+                //     true,
+                // );
+
+                if statements.len() > 0 {
                     let result_elem = document.create_element("div").unwrap();
                     result_elem.set_class_name("numbat-result");
-                    let fmt = NodeFormatter::new(result_elem);
-                    fmt.format(&result_markup, false);
+                    let mut fmt = NodeFormatter::new(result_elem);
+                    statements.iter().for_each(|stmt| {
+                        fmt.format(&stmt.pretty_print(), false);
+                        ()
+                    });
+                    // fmt.format(&result_markup, false);
+                    match result {
+                        InterpreterResult::Value(v) => {
+                            fmt.format(&v.pretty_print(), false);
+                        }
+                        _ => {}
+                    }
                     container.append_child(&fmt.node).unwrap();
                 }
+
+                // if !result_markup.0.is_empty() {
+                //     let result_elem = document.create_element("div").unwrap();
+                //     result_elem.set_class_name("numbat-result");
+                //     let fmt = NodeFormatter::new(result_elem);
+                //     statements.iter().for_each(|stmt| {
+                //         fmt.format(&stmt.pretty_print(), false);
+                //         ()
+                //     });
+                //     fmt.format(&result_markup, false);
+                //     container.append_child(&fmt.node).unwrap();
+                // }
 
                 InterpreterOutput {
                     output: container,
@@ -194,33 +218,33 @@ impl Numbat {
         }
     }
 
-    pub fn print_environment(&self) -> JsValue {
-        self.format(&self.ctx.print_environment(), false).into()
+    pub fn print_environment(&self) -> String {
+        self.format(&self.ctx.print_environment(), false)
     }
 
-    pub fn print_functions(&self) -> JsValue {
-        self.format(&self.ctx.print_functions(), false).into()
+    pub fn print_functions(&self) -> String {
+        self.format(&self.ctx.print_functions(), false)
     }
 
-    pub fn print_dimensions(&self) -> JsValue {
-        self.format(&self.ctx.print_dimensions(), false).into()
+    pub fn print_dimensions(&self) -> String {
+        self.format(&self.ctx.print_dimensions(), false)
     }
 
-    pub fn print_variables(&self) -> JsValue {
-        self.format(&self.ctx.print_variables(), false).into()
+    pub fn print_variables(&self) -> String {
+        self.format(&self.ctx.print_variables(), false)
     }
 
-    pub fn print_units(&self) -> JsValue {
-        self.format(&self.ctx.print_units(), false).into()
+    pub fn print_units(&self) -> String {
+        self.format(&self.ctx.print_units(), false)
     }
 
-    pub fn help(&self) -> JsValue {
-        self.format(&help_markup(), true).into()
+    pub fn help(&self) -> String {
+        self.format(&help_markup(), true)
     }
 
-    pub fn print_info(&mut self, keyword: &str) -> JsValue {
+    pub fn print_info(&mut self, keyword: &str) -> String {
         let output = self.ctx.print_info_for_keyword(keyword);
-        self.format(&output, true).into()
+        self.format(&output, true)
     }
 
     #[wasm_bindgen(js_name = "getCompletionsFor")]

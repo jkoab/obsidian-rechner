@@ -6,6 +6,7 @@ import {
 	MarkdownPostProcessorContext,
 	Editor,
 	MarkdownView,
+	requestUrl,
 } from "obsidian";
 
 import "./index.css";
@@ -14,6 +15,10 @@ import { NumbatKernel } from "./numbat";
 import { DEFAULT_SETTINGS, RechnerPluginSettings } from "./settings";
 import init, { setup_panic_hook, Numbat } from "@numbat-kernel/numbat_kernel";
 import { BlockViewer, FILE_VIEW_TYPE, NumbatFileView } from "./EditorPlugin";
+import { ExchangeRateSource } from "./exchange-rates";
+
+// one day = 24h * 60min * 60s * 1000ms
+const MS_MAX_AGE_EXCHANGE_RATES = 86_400_000;
 
 class RechnerPluginSettingsTab extends PluginSettingTab {
 	plugin: RechnerPlugin;
@@ -70,6 +75,7 @@ export default class RechnerPlugin extends Plugin {
 
 			const createReplStart = performance.mark("create-repl-start");
 			blockctx = this.numbatKernel.fromDefault();
+
 			const createReplStop = performance.mark("create-repl-stop");
 
 			performance.measure("create-repl", {
@@ -77,6 +83,7 @@ export default class RechnerPlugin extends Plugin {
 				end: performance.now(),
 			});
 			for (const [idx, codecell] of rawCodeCells.entries()) {
+				console.debug({ codecell });
 				const codeCellContainer = container.createEl(
 					"div",
 					{
@@ -137,12 +144,30 @@ export default class RechnerPlugin extends Plugin {
 		}
 	}
 
+	async fetchExchangeRates(settings: RechnerPluginSettings) {
+		const fetchtime = Date.now();
+		if (
+			fetchtime - (settings.exchangeData?.fetchtime || 0) >
+			MS_MAX_AGE_EXCHANGE_RATES
+		) {
+			const source = new ExchangeRateSource();
+			const rates = await requestUrl(source.url);
+			settings.exchangeData = {
+				exchangeRates: rates.text,
+				fetchtime,
+			};
+			return this.saveData(settings);
+		}
+	}
+
 	settings: RechnerPluginSettings;
 	async onload(): Promise<void> {
 		const settings = await this.loadSettings();
 		this.addSettingTab(new RechnerPluginSettingsTab(this.app, this));
 
-		this.numbatKernel = new NumbatKernel(settings);
+		await this.fetchExchangeRates(settings);
+		this.numbatKernel = new NumbatKernel();
+		this.numbatKernel.settings = settings;
 
 		await init();
 		setup_panic_hook();
@@ -154,6 +179,8 @@ export default class RechnerPlugin extends Plugin {
 				100,
 			);
 		}
+
+		// this is just the live viewer for testing
 		this.registerMarkdownCodeBlockProcessor(
 			"nbtl",
 			new BlockViewer().blockHandler.bind(this),

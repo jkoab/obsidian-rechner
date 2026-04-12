@@ -4,22 +4,24 @@ import { RechnerPluginSettings } from "./settings";
 
 import "./numbat.css";
 
-// async function getExchangeRates() {
-// 	const response = await requestUrl(
-// 		"https://numbat.dev/ecb-exchange-rates.php",
-// 	).text;
-// 	return response;
-// }
-//
-
 class NumbatKernel {
 	defaultCtx?: Numbat;
+	exchangeRates?: string;
 
-	constructor(settings?: RechnerPluginSettings) {}
+	public set settings(settings: RechnerPluginSettings) {
+		this.exchangeRates = settings.exchangeData?.exchangeRates;
+		if (this.defaultCtx) {
+			// invalidate default kernel
+			this.defaultCtx = undefined;
+		}
+	}
 
 	fromDefault(): Numbat {
 		if (this.defaultCtx === undefined) {
 			this.defaultCtx = Numbat.new(true, false);
+			if (this.exchangeRates) {
+				this.defaultCtx.setExchangeRates(this.exchangeRates);
+			}
 		}
 		return this.defaultCtx.clone();
 	}

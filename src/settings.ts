@@ -3,10 +3,16 @@ enum Kernel {
 	FEND,
 }
 
+interface ExchangeRateData {
+	exchangeRates: string;
+	fetchtime: number;
+}
+
 interface RechnerPluginSettings {
 	locale: string;
 	activeKernels: Map<Kernel, boolean>;
 	autoSuggest: boolean;
+	exchangeData?: ExchangeRateData;
 }
 
 function kernelDefaults(): Map<Kernel, boolean> {
