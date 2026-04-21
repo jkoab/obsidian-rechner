@@ -21,7 +21,7 @@ use numbat::resolver::CodeSource;
 use numbat::{markup as m, InterpreterResult, NameResolutionError, NumbatError};
 use numbat::{Context, InterpreterSettings};
 use thiserror::Error;
-use web_sys::{console, window, Document, DocumentFragment};
+use web_sys::{console, window, Document, DocumentFragment, Element};
 
 use crate::node_formatter::DOMOutput;
 
@@ -132,6 +132,23 @@ impl Numbat {
         fmt.format(markup, indent).to_string()
     }
 
+    fn create_element(
+        &self,
+        document: &Document,
+        tag: &str,
+        classes: Option<Vec<&str>>,
+    ) -> Result<Element, JsValue> {
+        if let Ok(elem) = document.create_element(tag) {
+            if let Some(classes) = classes {
+                for cls in classes {
+                    let _ = elem.set_attribute("class", cls);
+                }
+            }
+            Ok(elem)
+        } else {
+            Err(JsValue::from_str("failed to create element"))
+        }
+    }
     #[wasm_bindgen(js_name = "interpretToNode")]
     pub fn interpret_to_node(&mut self, code: &str) -> InterpreterOutput {
         let document: Document = window()
@@ -153,6 +170,16 @@ impl Numbat {
             Ok((statements, result)) => {
                 let container = document.create_document_fragment();
 
+                statements.iter().for_each(|stmt| {
+                    if let Ok(elem) =
+                        self.create_element(&document, "div", Some(vec!["numbat-statement"]))
+                    {
+                        let fmt = NodeFormatter::new(elem);
+                        fmt.format(&stmt.pretty_print(), false);
+                        let _ = container.append_child(&fmt.node);
+                    }
+                });
+
                 let to_be_printed = to_be_printed.lock().unwrap();
                 if !to_be_printed.is_empty() {
                     let print_statements = document.create_element("div").unwrap();
@@ -165,32 +192,18 @@ impl Numbat {
                     }
                     container.append_child(&print_statements).unwrap();
                 }
-
-                // let result_markup = result.to_markup(
-                //     statements.last(),
-                //     &self.ctx.dimension_registry().clone(),
-                //     true,
-                //     true,
-                // );
-
-                if statements.len() > 0 {
-                    let result_elem = document.create_element("div").unwrap();
-                    result_elem.set_class_name("numbat-result");
-                    let mut fmt = NodeFormatter::new(result_elem);
-                    statements.iter().for_each(|stmt| {
-                        fmt.format(&stmt.pretty_print(), false);
-                        ()
-                    });
-                    // fmt.format(&result_markup, false);
-                    match result {
-                        InterpreterResult::Value(v) => {
+                match result {
+                    InterpreterResult::Value(v) => {
+                        if let Ok(elem) =
+                            self.create_element(&document, "div", Some(vec!["numbat-result"]))
+                        {
+                            let fmt = NodeFormatter::new(elem);
                             fmt.format(&v.pretty_print(), false);
+                            let _ = container.append_child(&fmt.node);
                         }
-                        _ => {}
                     }
-                    container.append_child(&fmt.node).unwrap();
+                    _ => {}
                 }
-
                 // if !result_markup.0.is_empty() {
                 //     let result_elem = document.create_element("div").unwrap();
                 //     result_elem.set_class_name("numbat-result");

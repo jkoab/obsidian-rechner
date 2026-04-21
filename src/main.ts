@@ -111,6 +111,10 @@ export default class RechnerPlugin extends Plugin {
 				if (resultDetails.isError) {
 					codeCellContainer.addClass("rechner-cell-error-container");
 					evalEl.addClass("rechner-cell-error");
+					codeCellCodeNode.style.setProperty(
+						"--rechner-cell-code-display",
+						"visible",
+					);
 				}
 
 				performance.measure("interpret-node", {

@@ -78,10 +78,12 @@ impl Formatter for NodeFormatter {
 
         for part in &markup.0 {
             let formatted = self.format_part(&part);
-            let span = self.document.create_element("span").unwrap();
-            span.set_text_content(Some(formatted.to_string().as_ref()));
+            let Ok(span) = self.document.create_element("span") else {
+                continue;
+            };
+            span.set_text_content(Some(formatted.as_str()));
             span.set_class_name(part.1.cssclass().unwrap_or_default().as_ref());
-            self.node.append_child(&span).unwrap();
+            let _ = self.node.append_child(&span);
         }
         output
     }

@@ -45,11 +45,13 @@
 	background-color: var(--rechner-background-secondary);
 }
 .rechner-cell-code {
+	--rechner-cell-code-display: none;
 	@apply flex flex-1 grow;
 	@apply p-2;
 	@apply whitespace-pre;
 	/* @apply bg-pink-100; */
 	background-color: var(--code-background);
+	display: var(--rechner-cell-code-display);
 }
 .rechner-output-cell {
 	@apply flex flex-col flex-1 shrink;
@@ -66,6 +68,16 @@
 }
 
 .numbat-result {
+	@apply border-t flex justify-end;
+	border-color: var(--rechner-background-secondary);
+}
+
+.numbat-printed {
+	@apply flex flex-col justify-end;
+	/*@apply float-right;*/
+	& > div {
+		@apply flex justify-end;
+	}
 }
 .rechner-cell-eval-ok-border {
 	/* @apply border border-green-700; */
