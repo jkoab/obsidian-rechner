@@ -1,73 +1,128 @@
-@top Script { (Cell "\n")+ }
+@top Script { cellstatement+  }
 
-@skip { spaces }
+@skip {  spaces  }
+BlankLine { newline (newline+ | eof) }
 
+blankLine {
+  spaces* (newline | eof)+
+}
+Cell { (CommentLine | StatementLine)+ }
+cellstatement { Cell (newline | eof) }
 
-Cell { (Comment "\n")*   (Statement "\n")*  }
+CommentLine { Comment (newline | eof) }
+StatementLine {
+  Statement (newline | eof)
+}
 
 Statement[group=statement] {
-  (
-   (Base_numbers | Base_Operator | Identifier | Keyword | Assignment | Call | fn_decl_generic )+
-	// Variable_decl { Keyword Identifier  "=" Expression } |
-	// struct_decl { Keyword Identifier  "{"  "}" }
-	// Function_decl |
-	// Expression
-   )
+  variable_decl | struct_decl | function_decl | dimension_decl
 }
+variable_decl {"let" Identifier ( ":" type_annotation ) ? "=" expression}
+type_annotation { "Bool" | "String" | "List" StartABrack type EndABrack | dimension_expr}
+dimension_expr {dim_factor}
+dim_factor { dim_power ( (multiply | divide) dim_power ) *}
+dim_power { dim_primary ( power dim_exponent | unicode_exponent ) ?}
+dim_primary {Identifier | "1" | "(" dimension_expr ")"}
+power {factorial ( "^" "-" ? power ) ?}
+factorial { unicode_power "!" *}
+unicode_power  { call ( "⁻" ? ( "¹" | "²" | "³" | "⁴" | "⁵" | "⁶" | "⁷" | "⁸" | "⁹" ) ) ?}
+call {
+  primary ( ( StartRBrack arguments? EndRBrack ) | "." Identifier ) *
+}
+dim_exponent { integer | minus dim_exponent | "(" dim_exponent ( divide dim_exponent ) ? ")"}
+
+expression {postfix_apply}
+postfix_apply {condition ( "|>" Identifier ) *}
+condition { ( "if" conversion "then" condition "else" condition ) | conversion}
+conversion {logical_or ( ( "→" | "->" | "to" ) logical_or ) *}
+logical_or {logical_and ( "||" logical_and ) *}
+logical_and {logical_neg ( "&&" logical_neg ) *}
+logical_neg {( "!" logical_neg) | comparison}
+comparison {term ( (comparison_op ) term ) *}
+term {factor ( ( "+" | "-") factor ) *}
+factor {unary ( ( "*" | "/") per_factor ) *}
+unary {( ( minus | plus ) unary ) | ifactor}
+per_factor {unary ( "per" unary ) *}
+ifactor {power ( " " power ) *}
+type {Identifier }
+
+struct_decl {"struct" Identifier "{" ( Identifier ":" type_annotation "," )* ( Identifier ":" type_annotation "," ? ) ? "}"}
+function_decl {
+  "fn" Identifier ( fn_decl_generic ) ? fn_decl_param ( "->" type_annotation ) ? ( "=" expression ) ?
+}
+fn_decl_param {"(" ( Identifier ( ":" type_annotation ) ? "," )* ( Identifier ( ":" type_annotation ) ) ? ")"}
 
 commaSep<content> { "" | content ("," content)* }
 moduleSep<content> { "" | content ("::" content)* }
 
 Call { FunIdentifier StartRBrack arguments EndRBrack }
 FunIdentifier { Identifier }
-arguments { commaSep<Statement | "\n"*> }
-primary {  Base_numbers   }
+arguments { commaSep<Statement> }
+primary {
+  // Base_numbers
+  boolean | string |
+  hex_number | oct_number | bin_number | number | Identifier ( struct_expr ? ) | typed_hole | list_expr | "(" expression ")"
+}
+
+struct_expr {"{" commaSep<Identifier ":" (type_annotation | expression) > "}"}
+list_expr {"[]" | "[" commaSep<expression> "]"}
 
 // Function_decl { Keyword Identifier "(" Identifier * ")" ("=" Expression ) }
 // Expression { (primary | Base_Operator  | Call   )+ }
-fn_decl_generic { StartABrack commaSep<Identifier | "\n"*> EndABrack  }
-
+fn_decl_generic {  StartABrack commaSep<Identifier> EndABrack  }
+dimension_decl {"dimension" Identifier ( "=" dimension_expr ) *}
 
 Keyword { @specialize<Identifier, "per" | "to" |"let"|"fn"|"where"|"and"|"dimension"|"unit"|"use"|"long"|"short"|"both"|"none"|"print"|"assert"|"assert_eq"|"type"|"if"|"then"|"else"|"true"|"false">}
 
+Identifier { identifier_s identifier_c* }
+
 @tokens {
-  Identifier { $[A-Za-z] $[A-z0-9]* | greek+ }
+  identifier_s { Unicode_XID_Start | Unicode_Currency | "%" | "°" | "′" | "″" | "_" }
+  identifier_c { Unicode_XID_Continue | Unicode_Currency  | "%" }
+
+  Unicode_XID_Start { $[A-Za-z] $[A-z0-9] | greek }
+  Unicode_Currency { $[A-Za-z] $[A-z0-9]* }
+  Unicode_XID_Continue {$[A-Za-z] $[A-z0-9]*  }
   // identifier_s { $[\p{XID_Start}] }
   // identifier_unicode { $[\u{a1}-\u{10ffff} }
   Number { $[0-9] $[0-9_]* }
   greek { $[ΑαΒβΓγΔδΕεΖζΗηΘθΙιΚκΛλΜμΝνΞξΟοΠπΡρΣσςΤτΥυΦφΧχΨψΩω]}
-
-  // boolean {  "true" | "false" }
- // [/\b(?:[0-9]+(?:[._][0-9]+)*|
-  // 0x[0-9A-Fa-f]+|
-  // 0o[0-7]+|
-  // 0b[01]+(?:_[01]+)*|
-  // \.[0-9]+(?:[eE][-+]?[0-9]+)?|
-  // [0-9]+[eE][-+]?[0-9]+)(?![a-zA-Z_])/, 'number'],
-  Base_numbers {
+  unicode_exponent {"¹" | "²" | "³" | "⁴" | "⁵" | "⁶" | "⁷" | "⁸" | "⁹"}
+  boolean {  "true" | "false" }
+  integer { $[0-9]($[0-9_]*$[0-9])? }
+  comparison_op { ">" | ">="| "≥" | "<" | "<=" | "≤" | "==" | "!=" | "≠" }
+  plus {"+"}
+  minus { "-"}
+  multiply {"*" | "×" | "·" | "⋅"}
+  divide { "/" | "÷"}
+  string { '"' $[^"]* '"'}
+  number {
     $[0-9]+
     | "0x" $[0-9A-Fa-f]+
     | "0o" $[0-7]+
     | "0b" $[01]+ ($[01]+)*
     | "."  $[0-9]+ ($[eE]$[-+]?$[0-9]+)?
   }
-
+  hex_number { "0x" $[0-9a-fA-F]* }
+  oct_number  { "0o" $[0-7]* }
+  bin_number { "0b" $[01]* }
+  typed_hole  { "?" }
 
   StartRBrack[closedBy="EndRBrack"] { "(" }
   EndRBrack[openedBy="StartRBrack"] { ")" }
   StartABrack[closedBy="EndABrack"] { "<" }
   EndABrack[openedBy="StartABrack"] { ">" }
+  StartCBrack[closedBy="EndCBrack"] { "{" }
+  EndCBrack[openedBy="StartCBrack"] { "}" }
 
-
-  multiply { "*" | "×" | "·" | "⋅"}
-  divide { "/" | "÷" }
   Base_Operator { $[+\-*/^➞→:÷×≤≥≠<>²³] }
   spaces { $[\u0009 \u000b\u00a0]+ }
   space { @whitespace+ }
   String { '"' !["]* '"' }
-  Comment { "#" ![\n]* }
-  Empty_line {"\n" }
+  Comment[isolate] { "#" ![\n\r]* }
+  newline {"\n" }
   CellEnd { "\n\n" }
   Assignment { "="}
+  eof { @eof}
   @precedence { Keyword  Identifier    Base_Operator StartABrack}
 }
