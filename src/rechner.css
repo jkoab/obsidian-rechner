@@ -1,5 +1,3 @@
-@reference "./index.css";
-
 .theme-dark {
 	/* --rechner-background-primary: var(--code-background); */
 	--rechner-background-secondary: var(--background-modifier-border);
@@ -26,7 +24,9 @@
 	color: var(--code-normal);
 }
 .rechner-code-block {
-	@apply flex flex-col overflow-visible;
+	display: flex;
+	flex-direction: column;
+	overflow: visible;
 	gap: var(--size-2-2);
 
 	/* background-color: var(--rechner-background-secondary); */
@@ -43,19 +43,23 @@
 	gap: var(--border-width);
 	border-color: var(--rechner-background-secondary);
 	background-color: var(--rechner-background-secondary);
+	overflow-x: auto;
 }
 .rechner-cell-code {
 	--rechner-cell-code-display: none;
-	@apply flex flex-1 grow;
-	@apply p-2;
-	@apply whitespace-pre;
-	/* @apply bg-pink-100; */
+	display: flex;
+	flex: 1;
+	flex-grow: 1;
+	padding: var(--size-4-2);
+	white-space: pre;
 	background-color: var(--code-background);
 	display: var(--rechner-cell-code-display);
 }
 .rechner-output-cell {
-	@apply flex flex-col flex-1 shrink;
-	@apply p-2;
+	flex-direction: column;
+	flex: 1;
+	flex-shrink: 1;
+	padding: var(--size-4-2);
 	white-space: pre;
 	background-color: var(--rechner-background-primary-ok);
 	-webkit-box-decoration-break: clone;
@@ -64,32 +68,41 @@
 	/* @apply bg-green-100; */
 }
 .rechner-output-spacer {
-	@apply grow;
+	flex-grow: 1;
 }
 
 .numbat-result {
-	@apply border-t flex justify-end;
+	display: flex;
+	justify-content: flex-end;
+	border-top-style: solid;
+	border-top-width: var(--border-width);
 	border-color: var(--rechner-background-secondary);
 }
 
 .numbat-printed {
-	@apply flex flex-col justify-end;
-	/*@apply float-right;*/
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-end;
 	& > div {
-		@apply flex justify-end;
+		display: flex;
+		justify-content: flex-end;
 	}
 }
 .rechner-cell-eval-ok-border {
-	/* @apply border border-green-700; */
 }
 
 .rechner-cell-error {
-	@apply py-2 flex-1 whitespace-pre self-end w-full;
+	padding-block: var(--size-4-2);
+	flex: 1;
+	white-space: pre;
+	align-self: flex-end;
+	width: 100%;
 	background-color: var(--rechner-background-primary-error);
 	color: var(--code-normal);
 }
 .rechner-cell-error-container {
-	@apply flex flex-col;
+	display: flex;
+	flex-direction: column;
 	background-color: var(--text-error);
 	border-color: var(--text-error);
 	white-space-collapse: preserve;
@@ -100,11 +113,11 @@
 }
 
 .rechner-suggestions-container {
-	@apply flex;
+	display: flex;
 }
 .rechner-suggestions-name {
 }
 .rechner-suggestions-type {
-	@apply pl-2;
+	padding-left: var(--size-4-2);
 	font-size: var(--font-smallest);
 }

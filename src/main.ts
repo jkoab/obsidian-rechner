@@ -9,7 +9,6 @@ import {
 	requestUrl,
 } from "obsidian";
 
-import "./index.css";
 import "./rechner.css";
 import { NumbatKernel } from "./numbat";
 import { DEFAULT_SETTINGS, RechnerPluginSettings } from "./settings";
