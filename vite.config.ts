@@ -50,7 +50,9 @@ export default defineConfig(async ({ mode }) => {
 	const prod = mode === "production";
 
 	return {
-		devtools: true,
+		devtools: {
+			apply: "serve",
+		},
 		optimizeDeps: {
 			exclude: ["numbat-kernel"],
 		},
