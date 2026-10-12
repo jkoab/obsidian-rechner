@@ -16,7 +16,7 @@ interface RechnerPluginSettings {
 }
 
 function kernelDefaults(): Map<Kernel, boolean> {
-	const defaultMap = new Map();
+	const defaultMap: Map<Kernel, boolean> = new Map();
 	defaultMap.set(Kernel.NUMBAT, true);
 	return defaultMap;
 }

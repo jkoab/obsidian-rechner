@@ -8,7 +8,7 @@
 		"dev": "NODE_ENV=development vite build --mode development --watch",
 		"build": "tsc -noEmit -skipLibCheck && vite build --mode production",
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
-		"lint": "eslint --ext .js,.ts,.json src && stylelint styles.css && npx npm-package-json-lint .",
+		"lint": "eslint \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\"",
 		"prepare-lezer": "lezer-generator src/numbat-lang/numbat.grammar -o src/numbat-lang/NumbatParser.js"
 	},
 	"type": "module",
@@ -16,6 +16,7 @@
 	"author": "",
 	"license": "MIT",
 	"devDependencies": {
+		"@eslint/js": "^10.0.1",
 		"@lezer/generator": "^1.8.0",
 		"@types/node": "^20.19.39",
 		"@vitejs/devtools": "^0.1.13",
@@ -23,10 +24,11 @@
 		"eslint": "9.39.2",
 		"eslint-plugin-obsidianmd": "latest",
 		"eslint-plugin-promise": "^7.2.1",
+		"globals": "^17.6.0",
 		"obsidian": "latest",
 		"tslib": "2.4.0",
 		"typescript": "^5.9.3",
-		"typescript-eslint": "8.58.1",
+		"typescript-eslint": "^8.59.1",
 		"vite-plugin-inspect": "12.0.0-beta.1",
 		"vite-plugin-wasm": "^3.6.0"
 	},
@@ -35,9 +37,7 @@
 		"@codemirror/language": "^6.12.3",
 		"@lezer/highlight": "^1.2.3",
 		"@lezer/lr": "^1.4.8",
-		"@tailwindcss/postcss": "^4.2.2",
 		"numbat-kernel": "link:kernels/numbat-kernel/pkg",
-		"tailwindcss": "^4.2.2",
 		"vite": "^7.3.2"
 	},
 	"peerDependencies": {
