@@ -15,6 +15,7 @@ import { DEFAULT_SETTINGS, RechnerPluginSettings } from "./settings";
 import init, { setup_panic_hook, Numbat } from "numbat-kernel/numbat_kernel";
 import { BlockViewer, FILE_VIEW_TYPE, NumbatFileView } from "./EditorPlugin";
 import { ExchangeRateSource } from "./exchange-rates";
+import { NumbatSuggester } from "./NumbatSuggester";
 
 // one day = 24h * 60min * 60s * 1000ms
 const MS_MAX_AGE_EXCHANGE_RATES = 86_400_000;
@@ -188,16 +189,13 @@ export default class RechnerPlugin extends Plugin {
 			"nbtl",
 			new BlockViewer().blockHandler.bind(this),
 		);
-		if (settings.autoSuggest) {
-			// const numbatSuggester = new NumbatSuggester(
-			// 	this.app,
-			// 	this.settings,
-			// 	await (
-			// 		await this.numbatKernel.fromDefault()
-			// 	).ctx,
-			// );
-			// this.registerEditorSuggest(numbatSuggester);
-		}
+		const numbatSuggester = new NumbatSuggester(
+			this.app,
+			settings,
+			this.numbatKernel,
+		);
+		this.registerEditorSuggest(numbatSuggester);
+		this.register(() => numbatSuggester.free());
 
 		this.registerView(
 			FILE_VIEW_TYPE,
