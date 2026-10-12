@@ -5,19 +5,19 @@ mod utils;
 
 use node_formatter::NodeFormatter;
 use numbat::pretty_print::PrettyPrint;
-use numbat::value::Value;
 
 use std::fmt::Debug;
 use std::sync::{Arc, Mutex};
 use wasm_bindgen::prelude::*;
 
 use numbat::diagnostic::Diagnostic;
-use numbat::diagnostic::ErrorDiagnostic;
-use numbat::help::help_markup;
+use numbat::diagnostic::{ErrorDiagnostic, ResolverDiagnostic};
 use numbat::html_formatter::HtmlFormatter;
+use numbat::keywords::KEYWORDS;
 use numbat::markup::Formatter;
 use numbat::module_importer::BuiltinModuleImporter;
 use numbat::resolver::CodeSource;
+use numbat::unicode_input::UNICODE_INPUT;
 use numbat::{markup as m, InterpreterResult, NameResolutionError, NumbatError};
 use numbat::{Context, InterpreterSettings};
 use thiserror::Error;
@@ -33,15 +33,12 @@ pub fn setup_panic_hook() {
 #[wasm_bindgen]
 #[derive(Debug, Clone, Copy)]
 pub enum CompletionType {
-    Unknown = "Unknown",
-    Funtion = "Funtion",
-    CommonMetricPrefix = "CommonMetricPrefix",
     Keyword = "Keyword",
-    VariableName = "VariableName",
     UnicodeInput = "UnicodeInput",
-    FunctionName = "FunctionName",
-    DimensionName = "DimensionName",
-    UnitRepresentation = "UnitRepresentation",
+    Variable = "Variable",
+    Function = "Function",
+    Dimension = "Dimension",
+    Unit = "Unit",
 }
 
 #[wasm_bindgen(getter_with_clone)]
@@ -49,6 +46,8 @@ pub enum CompletionType {
 pub struct TypedCompletion {
     pub text: String,
     pub ctype: CompletionType,
+    /// function signature, dimension of a unit or the symbol of a unicode input
+    pub detail: Option<String>,
 }
 
 // #[wasm_bindgen]
@@ -227,32 +226,15 @@ impl Numbat {
                 | NameResolutionError::ReservedIdentifier(_)),
             )) => self.print_diagnostic(&e),
             Err(NumbatError::TypeCheckError(e)) => self.print_diagnostic(&e),
-            Err(NumbatError::RuntimeError(e)) => self.print_diagnostic(&e),
+            Err(NumbatError::RuntimeError(e)) => self.print_diagnostic(&ResolverDiagnostic {
+                resolver: self.ctx.resolver(),
+                error: &e,
+            }),
         }
     }
 
     pub fn print_environment(&self) -> String {
         self.format(&self.ctx.print_environment(), false)
-    }
-
-    pub fn print_functions(&self) -> String {
-        self.format(&self.ctx.print_functions(), false)
-    }
-
-    pub fn print_dimensions(&self) -> String {
-        self.format(&self.ctx.print_dimensions(), false)
-    }
-
-    pub fn print_variables(&self) -> String {
-        self.format(&self.ctx.print_variables(), false)
-    }
-
-    pub fn print_units(&self) -> String {
-        self.format(&self.ctx.print_units(), false)
-    }
-
-    pub fn help(&self) -> String {
-        self.format(&help_markup(), true)
     }
 
     pub fn print_info(&mut self, keyword: &str) -> String {
@@ -271,22 +253,114 @@ impl Numbat {
         completions
     }
 
+    /// Mirrors `Context::get_completions_for`, but keeps track of what kind
+    /// of name each completion is.
     #[wasm_bindgen(js_name = "getTypedCompletionsFor")]
     pub fn get_typed_completions_for(
         &self,
         word_part: &str,
         add_paren: bool,
     ) -> Vec<TypedCompletion> {
-        // TODO: add proper types
-        let completions = self
-            .ctx
-            .get_completions_for(word_part, add_paren)
-            // .map(|s| s.trim().trim_end_matches('(').into())
-            .map(|s| TypedCompletion {
-                text: s,
-                ctype: CompletionType::Unknown,
+        const COMMON_METRIC_PREFIXES: &[&str] = &[
+            "pico", "nano", "micro", "milli", "centi", "kilo", "mega", "giga", "tera",
+        ];
+        // conversion functions that are used like units (e.g. "20 celsius")
+        const TEMPERATURE_PSEUDO_UNITS: &[&str] = &[
+            "celsius",
+            "degree_celsius",
+            "fahrenheit",
+            "degree_fahrenheit",
+            "°C",
+            "°F",
+        ];
+
+        let metric_prefixes: Vec<_> = COMMON_METRIC_PREFIXES
+            .iter()
+            .filter(|prefix| {
+                word_part.starts_with(*prefix)
+                    || (!word_part.is_empty() && prefix.starts_with(word_part))
             })
             .collect();
+
+        let mut completions = Vec::new();
+        let mut add_if_valid = |text: String, ctype: CompletionType, detail: Option<String>| {
+            if text.starts_with(word_part) {
+                completions.push(TypedCompletion {
+                    text,
+                    ctype,
+                    detail,
+                });
+            }
+        };
+
+        for kw in KEYWORDS {
+            add_if_valid((*kw).into(), CompletionType::Keyword, None);
+        }
+
+        for (patterns, symbol) in UNICODE_INPUT {
+            for pattern in *patterns {
+                add_if_valid(
+                    (*pattern).into(),
+                    CompletionType::UnicodeInput,
+                    Some((*symbol).into()),
+                );
+            }
+        }
+
+        for variable in self.ctx.variable_names() {
+            add_if_valid(variable.into(), CompletionType::Variable, None);
+        }
+
+        for function in self
+            .ctx
+            .functions()
+            .filter(|f| f.fn_name.starts_with(word_part))
+        {
+            let name = function.fn_name.to_string();
+            if TEMPERATURE_PSEUDO_UNITS.contains(&name.as_str()) {
+                add_if_valid(name, CompletionType::Unit, None);
+                continue;
+            }
+            let mut text = name;
+            if add_paren {
+                let has_no_parameters = function
+                    .signature_str
+                    .split_once('(')
+                    .is_some_and(|(_, params)| params.starts_with(')'));
+                text.push_str(if has_no_parameters { "()" } else { "(" });
+            }
+            add_if_valid(
+                text,
+                CompletionType::Function,
+                Some(function.signature_str.into()),
+            );
+        }
+
+        for dimension in self.ctx.dimension_names() {
+            add_if_valid(dimension.to_string(), CompletionType::Dimension, None);
+        }
+
+        for (_, (_, meta)) in self.ctx.unit_representations() {
+            let dimension = meta.readable_type.to_string();
+            for (unit, accepts_prefix) in meta.aliases {
+                // like upstream, only add the common long prefixes
+                if accepts_prefix.long && meta.metric_prefixes {
+                    for prefix in &metric_prefixes {
+                        add_if_valid(
+                            format!("{prefix}{unit}"),
+                            CompletionType::Unit,
+                            Some(dimension.clone()),
+                        );
+                    }
+                }
+                add_if_valid(unit.into(), CompletionType::Unit, Some(dimension.clone()));
+            }
+        }
+
+        // stable sort keeps the first kind for names that are e.g. both
+        // a variable and a unit, like upstream's sort + dedup
+        completions.sort_by(|a, b| a.text.cmp(&b.text));
+        completions.dedup_by(|a, b| a.text == b.text);
         completions
     }
 

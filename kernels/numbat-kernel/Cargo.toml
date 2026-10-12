@@ -13,7 +13,7 @@ web-sys = { version = "0.3.80", features = [
     "console",
 ] }
 
-numbat = { version = "1.16.0", features = [
+numbat = { version = "1.24", features = [
     "html-formatter",
 ], default-features = false }
 getrandom = { version = "0.3.3", features = ["wasm_js"] }
@@ -46,6 +46,3 @@ codegen-units = 1
 
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = ["-Oz", "--enable-nontrapping-float-to-int", "--enable-bulk-memory"]
-
-[patch.crates-io]
-numbat = { git = "https://github.com/sharkdp/numbat.git", branch = "master" }

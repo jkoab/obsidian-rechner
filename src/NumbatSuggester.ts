@@ -15,140 +15,24 @@ const FENCE_REGEX = /^\s*(`{3,}|~{3,})\s*([^\s`]*)/;
 // numbat identifiers may contain unicode letters (e.g. µ, °)
 const WORD_BEFORE_CURSOR_REGEX = /[\p{L}\p{N}_]+$/u;
 
+// mirrors the kernel's `CompletionType`, which wasm-bindgen does not export
 type CompletionKind =
-	"function" | "unit" | "variable" | "dimension" | "keyword";
+	"Keyword" | "UnicodeInput" | "Variable" | "Function" | "Dimension" | "Unit";
 
 const KIND_BADGES: Record<CompletionKind, string> = {
-	function: "f",
-	unit: "u",
-	variable: "v",
-	dimension: "d",
-	keyword: "k",
+	Function: "f",
+	Unit: "u",
+	Variable: "v",
+	Dimension: "d",
+	Keyword: "k",
+	UnicodeInput: "α",
 };
-
-const METRIC_PREFIXES = [
-	// long
-	"quecto",
-	"ronto",
-	"yocto",
-	"zepto",
-	"atto",
-	"femto",
-	"pico",
-	"nano",
-	"micro",
-	"milli",
-	"centi",
-	"deci",
-	"deca",
-	"deka",
-	"hecto",
-	"kilo",
-	"mega",
-	"giga",
-	"tera",
-	"peta",
-	"exa",
-	"zetta",
-	"yotta",
-	"ronna",
-	"quetta",
-	"kibi",
-	"mebi",
-	"gibi",
-	"tebi",
-	"pebi",
-	"exbi",
-	"zebi",
-	"yobi",
-	// short
-	"Ki",
-	"Mi",
-	"Gi",
-	"Ti",
-	"Pi",
-	"Ei",
-	"Zi",
-	"Yi",
-	"da",
-	"q",
-	"r",
-	"y",
-	"z",
-	"a",
-	"f",
-	"p",
-	"n",
-	"µ",
-	"u",
-	"m",
-	"c",
-	"d",
-	"h",
-	"k",
-	"M",
-	"G",
-	"T",
-	"P",
-	"E",
-	"Z",
-	"Y",
-	"R",
-	"Q",
-];
 
 interface NumbatCompletion {
 	text: string;
-	kind?: CompletionKind;
-}
-
-/** Names known to a numbat context, grouped by kind. */
-interface NumbatNames {
-	units: Set<string>;
-	variables: Set<string>;
-	dimensions: Set<string>;
-}
-
-function spanContents(html: string, cls: string): Set<string> {
-	const names = new Set<string>();
-	const regex = new RegExp(`<span class="${cls}">([^<]*)</span>`, "g");
-	for (const match of html.matchAll(regex)) {
-		if (match[1]) names.add(match[1]);
-	}
-	return names;
-}
-
-function collectNames(ctx: Numbat): NumbatNames {
-	return {
-		units: spanContents(ctx.print_units(), "numbat-unit"),
-		variables: spanContents(ctx.print_variables(), "numbat-identifier"),
-		dimensions: spanContents(
-			ctx.print_dimensions(),
-			"numbat-type-identifier",
-		),
-	};
-}
-
-function isPrefixedUnit(text: string, units: Set<string>): boolean {
-	return METRIC_PREFIXES.some(
-		(prefix) =>
-			text.startsWith(prefix) && units.has(text.slice(prefix.length)),
-	);
-}
-
-/** The kernel does not report completion types (yet), so infer them. */
-function classify(
-	text: string,
-	names: NumbatNames,
-): CompletionKind | undefined {
-	if (text.endsWith("(")) return "function";
-	if (text.endsWith(" ")) return "keyword";
-	if (names.dimensions.has(text)) return "dimension";
-	if (names.variables.has(text)) return "variable";
-	if (names.units.has(text) || isPrefixedUnit(text, names.units)) {
-		return "unit";
-	}
-	return undefined;
+	kind: CompletionKind;
+	/** function signature, dimension of a unit or a unicode symbol */
+	detail?: string;
 }
 
 /**
@@ -185,7 +69,7 @@ class NumbatSuggester extends EditorSuggest<NumbatCompletion> {
 	private numbatKernel: NumbatKernel;
 	private settings: RechnerPluginSettings;
 	// context with the block code above the cursor already evaluated
-	private cached?: { code: string; ctx: Numbat; names: NumbatNames };
+	private cached?: { code: string; ctx: Numbat };
 
 	constructor(
 		app: App,
@@ -201,9 +85,9 @@ class NumbatSuggester extends EditorSuggest<NumbatCompletion> {
 	 * Evaluates the code preceding the cursor so user defined
 	 * variables, functions and units show up in the suggestions.
 	 */
-	private contextFor(code: string): { ctx: Numbat; names: NumbatNames } {
+	private contextFor(code: string): Numbat {
 		if (this.cached?.code === code) {
-			return this.cached;
+			return this.cached.ctx;
 		}
 		this.cached?.ctx.free();
 		const ctx = this.numbatKernel.fromDefault();
@@ -212,8 +96,8 @@ class NumbatSuggester extends EditorSuggest<NumbatCompletion> {
 				ctx.interpretToNode(cell).free();
 			}
 		}
-		this.cached = { code, ctx, names: collectNames(ctx) };
-		return this.cached;
+		this.cached = { code, ctx };
+		return ctx;
 	}
 
 	onTrigger(
@@ -246,49 +130,55 @@ class NumbatSuggester extends EditorSuggest<NumbatCompletion> {
 			{ line: blockStart + 1, ch: 0 },
 			{ line: context.start.line, ch: 0 },
 		);
-		const { ctx, names } = this.contextFor(precedingCode);
+		const ctx = this.contextFor(precedingCode);
 
 		return ctx
 			.getTypedCompletionsFor(context.query, true)
 			.map((completion) => {
-				const text = completion.text;
+				const { text, ctype, detail } = completion;
 				completion.free();
-				return { text, kind: classify(text, names) };
+				return { text, kind: ctype, detail };
 			})
 			.filter(({ text }) => text !== context.query);
 	}
 
 	renderSuggestion(value: NumbatCompletion, el: HTMLElement): void {
 		const suggestion = el.createDiv({
-			cls: "rechner-suggestion",
+			cls: [
+				"rechner-suggestion",
+				`rechner-suggestion-${value.kind.toLowerCase()}`,
+			],
 		});
-		const badge = suggestion.createDiv({
+		suggestion.createDiv({
 			cls: "rechner-suggestion-badge",
-			text: value.kind ? KIND_BADGES[value.kind] : "",
+			text: KIND_BADGES[value.kind],
+			attr: { "aria-label": value.kind },
 		});
-		if (value.kind) {
-			suggestion.addClass(`rechner-suggestion-${value.kind}`);
-			badge.setAttribute("aria-label", value.kind);
-		}
 		const name = suggestion.createDiv({ cls: "rechner-suggestion-name" });
-		if (value.kind === "function") {
-			name.createSpan({ text: value.text.slice(0, -1) });
+		if (value.kind === "Function") {
+			const fnName = value.text.replace(/\(\)?$/, "");
+			name.createSpan({ text: fnName });
 			name.createSpan({ cls: "rechner-suggestion-parens", text: "()" });
 		} else {
 			name.setText(value.text.trimEnd());
 		}
-		if (value.kind) {
+		if (value.detail) {
 			suggestion.createDiv({
-				cls: "rechner-suggestion-kind",
-				text: value.kind,
+				cls: "rechner-suggestion-detail",
+				text: value.detail,
 			});
 		}
 	}
 
 	selectSuggestion(value: NumbatCompletion): void {
 		if (!this.context) return;
+		// unicode inputs like `pm` are replaced by their symbol (±)
+		const text =
+			value.kind === "UnicodeInput" && value.detail
+				? value.detail
+				: value.text;
 		this.context.editor.replaceRange(
-			value.text,
+			text,
 			this.context.start,
 			this.context.end,
 		);

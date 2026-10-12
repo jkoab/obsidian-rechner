@@ -121,7 +121,8 @@
 .rechner-suggestion-unit {
 	--rechner-suggestion-rgb: var(--color-green-rgb);
 }
-.rechner-suggestion-variable {
+.rechner-suggestion-variable,
+.rechner-suggestion-unicodeinput {
 	--rechner-suggestion-rgb: var(--color-blue-rgb);
 }
 .rechner-suggestion-dimension {
@@ -152,9 +153,12 @@
 .rechner-suggestion-parens {
 	color: var(--text-faint);
 }
-.rechner-suggestion-kind {
-	flex: none;
-	font-family: var(--font-interface);
+.rechner-suggestion-detail {
+	flex: 0 1 auto;
+	max-width: 60%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 	font-size: var(--font-smallest);
 	color: var(--text-faint);
 }
