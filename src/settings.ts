@@ -12,6 +12,7 @@ interface RechnerPluginSettings {
 	locale: string;
 	activeKernels: Map<Kernel, boolean>;
 	autoSuggest: boolean;
+	inlineEval: boolean;
 	exchangeData?: ExchangeRateData;
 }
 
@@ -25,6 +26,7 @@ const DEFAULT_SETTINGS: RechnerPluginSettings = {
 	locale: "default",
 	activeKernels: kernelDefaults(),
 	autoSuggest: false,
+	inlineEval: true,
 };
 
 export type { Kernel, RechnerPluginSettings };

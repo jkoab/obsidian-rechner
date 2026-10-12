@@ -7,11 +7,10 @@ import {
 	EditorSuggestTriggerInfo,
 } from "obsidian";
 import { Numbat } from "numbat-kernel/numbat_kernel";
+import { numbatBlockAt } from "./numbat-blocks";
 import { NumbatKernel } from "./numbat";
 import { RechnerPluginSettings } from "./settings";
 
-const NUMBAT_BLOCK_LANGUAGES = ["nbt", "numbat"];
-const FENCE_REGEX = /^\s*(`{3,}|~{3,})\s*([^\s`]*)/;
 // numbat identifiers may contain unicode letters (e.g. µ, °)
 const WORD_BEFORE_CURSOR_REGEX = /[\p{L}\p{N}_]+$/u;
 
@@ -33,36 +32,6 @@ interface NumbatCompletion {
 	kind: CompletionKind;
 	/** function signature, dimension of a unit or a unicode symbol */
 	detail?: string;
-}
-
-/**
- * Returns the line of the opening fence if the cursor is inside a numbat
- * code block, otherwise null.
- */
-function findNumbatBlockStart(
-	editor: Editor,
-	cursor: EditorPosition,
-): number | null {
-	let open: { fence: string; lang: string; line: number } | null = null;
-	for (let line = 0; line < cursor.line; line++) {
-		const match = editor.getLine(line).match(FENCE_REGEX);
-		if (!match) continue;
-		const fence = match[1] ?? "";
-		const lang = match[2] ?? "";
-		if (open === null) {
-			open = { fence, lang: lang.toLowerCase(), line };
-		} else if (
-			fence[0] === open.fence[0] &&
-			fence.length >= open.fence.length &&
-			lang === ""
-		) {
-			open = null;
-		}
-	}
-	if (open && NUMBAT_BLOCK_LANGUAGES.includes(open.lang)) {
-		return open.line;
-	}
-	return null;
 }
 
 class NumbatSuggester extends EditorSuggest<NumbatCompletion> {
@@ -113,7 +82,9 @@ class NumbatSuggester extends EditorSuggest<NumbatCompletion> {
 				.match(WORD_BEFORE_CURSOR_REGEX)?.[0] ?? "";
 		if (word.length === 0) return null;
 
-		if (findNumbatBlockStart(editor, cursor) === null) return null;
+		if (numbatBlockAt(cursor.line, (l) => editor.getLine(l)) === null) {
+			return null;
+		}
 
 		return {
 			query: word,
@@ -123,12 +94,13 @@ class NumbatSuggester extends EditorSuggest<NumbatCompletion> {
 	}
 
 	getSuggestions(context: EditorSuggestContext): NumbatCompletion[] {
-		const blockStart = findNumbatBlockStart(context.editor, context.start);
-		if (blockStart === null) return [];
+		const { editor, start } = context;
+		const block = numbatBlockAt(start.line, (l) => editor.getLine(l));
+		if (block === null) return [];
 
-		const precedingCode = context.editor.getRange(
-			{ line: blockStart + 1, ch: 0 },
-			{ line: context.start.line, ch: 0 },
+		const precedingCode = editor.getRange(
+			{ line: block.fenceLine + 1, ch: 0 },
+			{ line: start.line, ch: 0 },
 		);
 		const ctx = this.contextFor(precedingCode);
 

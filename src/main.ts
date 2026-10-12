@@ -16,6 +16,7 @@ import init, { setup_panic_hook, Numbat } from "numbat-kernel/numbat_kernel";
 import { BlockViewer, FILE_VIEW_TYPE, NumbatFileView } from "./EditorPlugin";
 import { ExchangeRateSource } from "./exchange-rates";
 import { NumbatSuggester } from "./NumbatSuggester";
+import { inlineEvalExtension } from "./InlineEval";
 
 // one day = 24h * 60min * 60s * 1000ms
 const MS_MAX_AGE_EXCHANGE_RATES = 86_400_000;
@@ -54,6 +55,21 @@ class RechnerPluginSettingsTab extends PluginSettingTab {
 					.onChange(async (v) => {
 						this.plugin.settings.autoSuggest = v;
 						await this.plugin.saveSettings();
+					}),
+			);
+		new Setting(containerEl)
+			.setName("Inline results")
+			.setDesc(
+				"Show results next to the code while editing numbat blocks",
+			)
+			.addToggle((t) =>
+				t
+					.setValue(this.plugin.settings.inlineEval)
+					.onChange(async (v) => {
+						this.plugin.settings.inlineEval = v;
+						await this.plugin.saveSettings();
+						// rebuilds the editor extensions in all open editors
+						this.app.workspace.updateOptions();
 					}),
 			);
 	}
@@ -196,6 +212,9 @@ export default class RechnerPlugin extends Plugin {
 		);
 		this.registerEditorSuggest(numbatSuggester);
 		this.register(() => numbatSuggester.free());
+		this.registerEditorExtension(
+			inlineEvalExtension(this.numbatKernel, settings),
+		);
 
 		this.registerView(
 			FILE_VIEW_TYPE,

@@ -90,6 +90,18 @@ impl ErrorDiagnostic for KernelError {
     }
 }
 
+/// Splits `use` statements off the code. They are replaced by empty lines,
+/// so line numbers in diagnostics of the remaining code stay the same.
+fn split_imports(code: &str) -> (String, String) {
+    let is_import = |line: &str| line.trim_start().starts_with("use ");
+    let imports: Vec<&str> = code.lines().filter(|line| is_import(line)).collect();
+    let rest: Vec<&str> = code
+        .lines()
+        .map(|line| if is_import(line) { "" } else { line })
+        .collect();
+    (imports.join("\n"), rest.join("\n"))
+}
+
 #[wasm_bindgen]
 impl Numbat {
     pub fn new(load_prelude: bool, enable_pretty_printing: bool) -> Self {
@@ -161,13 +173,40 @@ impl Numbat {
                 to_be_printed_c.lock().unwrap().push(s.clone());
             }),
         };
+        // `use` statements are interpreted on their own, as numbat returns all
+        // statements of the imported modules, which would be echoed otherwise
+        let (imports, code) = split_imports(code);
+        if !imports.is_empty() {
+            if let Err(e) = self.ctx.interpret(&imports, CodeSource::Text) {
+                return self.error_output(*e);
+            }
+        }
         let interpretation_result =
             self.ctx
-                .interpret_with_settings(&mut settings, code, CodeSource::Text);
+                .interpret_with_settings(&mut settings, &code, CodeSource::Text);
 
         match interpretation_result.map_err(|b| *b) {
             Ok((statements, result)) => {
                 let container = document.create_document_fragment();
+
+                // echo the `use` statements themselves instead of the imported ones
+                for module in imports
+                    .lines()
+                    .filter_map(|l| l.trim().strip_prefix("use "))
+                {
+                    if let Ok(elem) =
+                        self.create_element(&document, "div", Some(vec!["numbat-statement"]))
+                    {
+                        let fmt = NodeFormatter::new(elem);
+                        let markup = m::keyword("use")
+                            + m::space()
+                            + m::identifier(numbat::compact_str::CompactString::from(
+                                module.trim(),
+                            ));
+                        fmt.format(&markup, false);
+                        let _ = container.append_child(&fmt.node);
+                    }
+                }
 
                 statements.iter().for_each(|stmt| {
                     if let Ok(elem) =
@@ -220,13 +259,19 @@ impl Numbat {
                     is_error: false,
                 }
             }
-            Err(NumbatError::ResolverError(e)) => self.print_diagnostic(&e),
-            Err(NumbatError::NameResolutionError(
+            Err(e) => self.error_output(e),
+        }
+    }
+
+    fn error_output(&self, error: NumbatError) -> InterpreterOutput {
+        match error {
+            NumbatError::ResolverError(e) => self.print_diagnostic(&e),
+            NumbatError::NameResolutionError(
                 e @ (NameResolutionError::IdentifierClash { .. }
                 | NameResolutionError::ReservedIdentifier(_)),
-            )) => self.print_diagnostic(&e),
-            Err(NumbatError::TypeCheckError(e)) => self.print_diagnostic(&e),
-            Err(NumbatError::RuntimeError(e)) => self.print_diagnostic(&ResolverDiagnostic {
+            ) => self.print_diagnostic(&e),
+            NumbatError::TypeCheckError(e) => self.print_diagnostic(&e),
+            NumbatError::RuntimeError(e) => self.print_diagnostic(&ResolverDiagnostic {
                 resolver: self.ctx.resolver(),
                 error: &e,
             }),
@@ -395,5 +440,25 @@ impl Numbat {
             output: fragment,
             is_error: true,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::split_imports;
+
+    #[test]
+    fn split_imports_keeps_line_numbers() {
+        let (imports, rest) =
+            split_imports("use extra::astronomy\nlunar_mass\n  use units::misc\n2 m");
+        assert_eq!(imports, "use extra::astronomy\n  use units::misc");
+        assert_eq!(rest, "\nlunar_mass\n\n2 m");
+    }
+
+    #[test]
+    fn split_imports_ignores_identifiers_starting_with_use() {
+        let (imports, rest) = split_imports("user_count = 3");
+        assert_eq!(imports, "");
+        assert_eq!(rest, "user_count = 3");
     }
 }

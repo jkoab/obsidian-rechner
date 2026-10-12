@@ -162,3 +162,28 @@
 	font-size: var(--font-smallest);
 	color: var(--text-faint);
 }
+
+.rechner-inline-result {
+	margin-left: var(--size-4-4);
+	padding: 0 var(--size-4-1);
+	border-radius: var(--radius-s);
+	font-family: var(--font-monospace);
+	font-size: 0.9em;
+	color: var(--text-muted);
+	background-color: rgba(var(--mono-rgb-100), 0.05);
+	white-space: pre;
+	user-select: none;
+}
+.rechner-inline-result::before {
+	content: "= ";
+	color: var(--text-faint);
+}
+.rechner-inline-result-error {
+	color: var(--text-error);
+	background-color: rgba(var(--color-red-rgb), 0.08);
+	cursor: help;
+}
+.rechner-inline-result-error::before {
+	content: "⚠ ";
+	color: inherit;
+}
