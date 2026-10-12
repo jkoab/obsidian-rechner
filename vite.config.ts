@@ -2,7 +2,6 @@ import builtinModules from "builtin-modules";
 import * as fs from "fs";
 import * as path from "path";
 import { defineConfig, Plugin, UserConfig } from "vite";
-import wasm from "vite-plugin-wasm";
 import Inspect from "vite-plugin-inspect";
 const prod = process.env.NODE_ENV === "production";
 /**
@@ -45,6 +44,23 @@ function includeJSON(options: { files: Array<string> }): Plugin {
 	};
 }
 
+/**
+ * Inlines `*.wasm?binary` imports as a Uint8Array, so the wasm-bindgen glue can be
+ * initialized without `new URL(..., import.meta.url)`, which breaks in CJS output.
+ */
+function wasmBinary(): Plugin {
+	return {
+		name: "wasm-binary",
+		enforce: "pre",
+		async load(id) {
+			if (!id.endsWith(".wasm?binary")) return;
+			const file = id.slice(0, -"?binary".length);
+			const b64 = (await fs.promises.readFile(file)).toString("base64");
+			return `export default Uint8Array.from(atob("${b64}"), c => c.charCodeAt(0));`;
+		},
+	};
+}
+
 export default defineConfig(async ({ mode }) => {
 	const { resolve } = path;
 	const prod = mode === "production";
@@ -53,11 +69,8 @@ export default defineConfig(async ({ mode }) => {
 		devtools: {
 			apply: "serve",
 		},
-		optimizeDeps: {
-			exclude: ["numbat-kernel"],
-		},
 		plugins: [
-			wasm(),
+			wasmBinary(),
 			Inspect(),
 			hotReloadFilePlugin(),
 			includeJSON({

@@ -13,6 +13,7 @@ import "./rechner.css";
 import { NumbatKernel } from "./numbat";
 import { DEFAULT_SETTINGS, RechnerPluginSettings } from "./settings";
 import init, { setup_panic_hook, Numbat } from "numbat-kernel/numbat_kernel";
+import wasmBytes from "numbat-kernel/numbat_kernel_bg.wasm?binary";
 import { BlockViewer, FILE_VIEW_TYPE, NumbatFileView } from "./EditorPlugin";
 import { ExchangeRateSource } from "./exchange-rates";
 import { NumbatSuggester } from "./NumbatSuggester";
@@ -189,7 +190,7 @@ export default class RechnerPlugin extends Plugin {
 		this.numbatKernel = new NumbatKernel();
 		this.numbatKernel.settings = settings;
 
-		await init();
+		await init({ module_or_path: wasmBytes });
 		setup_panic_hook();
 
 		for (const codeblockname of ["numbat", "nbt"]) {

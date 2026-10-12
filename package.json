@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-rechner-plugin",
-	"version": "0.8.0",
+	"version": "0.8.1",
 	"description": "Obsidian frontend for WebAssembly based calculator engines",
 	"main": "main.js",
 	"scripts": {
@@ -29,8 +29,7 @@
 		"tslib": "2.4.0",
 		"typescript": "^5.9.3",
 		"typescript-eslint": "^8.71.1",
-		"vite-plugin-inspect": "12.0.0-beta.1",
-		"vite-plugin-wasm": "^3.6.0"
+		"vite-plugin-inspect": "12.0.0-beta.1"
 	},
 	"dependencies": {
 		"@codemirror/autocomplete": "^6.20.3",
