@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-rechner-plugin",
-	"version": "0.7.1",
+	"version": "0.8.0",
 	"description": "Obsidian frontend for WebAssembly based calculator engines",
 	"main": "main.js",
 	"scripts": {
